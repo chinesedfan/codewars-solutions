@@ -18,7 +18,7 @@ function solvePuzzle(clues) {
         }
     }
 
-    return indexes.map((i) => ps[i]);
+    return indexes.map((i, r) => getCandidatesForRow(clues, ps, seenMap, r)[i]);
 }
 
 function generatePermutations(n) {
@@ -41,15 +41,15 @@ function dividedIntoGroups(ps) {
     for (let i = 0; i < ps.length; i++) {
         const left = seenFromLeft(ps[i]);
         if (!leftMap[left]) leftMap[left] = [];
-        leftMap[left].push(i);
+        leftMap[left].push(ps[i]);
 
         const right = seenFromRight(ps[i]);
         if (!rightMap[right]) rightMap[right] = [];
-        rightMap[right].push(i);
+        rightMap[right].push(ps[i]);
 
         if (!totalMap[left]) totalMap[left] = {};
         if (!totalMap[left][right]) totalMap[left][right] = [];
-        totalMap[left][right].push(i);
+        totalMap[left][right].push(ps[i]);
     }
     return {
         left: leftMap,
@@ -57,11 +57,10 @@ function dividedIntoGroups(ps) {
         total: totalMap
     };
 }
-
-function findIndexForRow(clues, ps, seenMap, indexes, row) {
+function getCandidatesForRow(clues, ps, seenMap, row) {
     const left = clues[clues.length - 1 - row];
     const right = clues[clues.length / 4 + row];
-    // candidate indexes
+
     let candidates;
     if (left && right) {
         candidates = seenMap.total[left][right];
@@ -70,19 +69,23 @@ function findIndexForRow(clues, ps, seenMap, indexes, row) {
     } else if (right) {
         candidates = seenMap.right[right];
     } else {
-        candidates = new Array(ps.length - 1 - indexes[row]).fill(0).map((x, i) => indexes[row] + 1 + i);
+        candidates = ps;
     }
+    return candidates;
+}
 
-    for (let ci = 0; ci < candidates.length; ci++) {
-        if (indexes[row] >= candidates[ci]) continue;
+function findIndexForRow(clues, ps, seenMap, indexes, row) {
+    // candidate indexes
+    const candidates = getCandidatesForRow(clues, ps, seenMap, row);
 
-        const heights = ps[candidates[ci]];
+    while (++indexes[row] < candidates.length) {
+        const heights = candidates[indexes[row]];
         // check columns
         const hasError = heights.some((h, i) => {
             const arr = [];
             const map = {};
             for (let j = 0; j <= row; j++) {
-                const x = j < row ? ps[indexes[j]][i] : h;
+                const x = j < row ? getCandidatesForRow(clues, ps, seenMap, j)[indexes[j]][i] : h;
                 if (map[x]) return true;
 
                 map[x] = 1;
@@ -99,7 +102,6 @@ function findIndexForRow(clues, ps, seenMap, indexes, row) {
         });
         if (hasError) continue;
 
-        indexes[row] = candidates[ci];
         return true;
     }
     return false;
