@@ -3,6 +3,17 @@ function solvePuzzle(clues) {
     const ps = generatePermutations(n);
     const seenMap = dividedIntoGroups(ps);
 
+    const grid = new Array(n).fill(0).map(() => new Array(n));
+    fillGridForX(grid, n, clues);
+    // determine columns of the highest
+    seenMap.confirmed = grid.map((row) => {
+        let j = -1;
+        row.forEach((x, k) => {
+            if (x) j = k;
+        });
+        return j;
+    });
+
     const indexes = new Array(n).fill(-1); // index of each row in permutations
     let row = 0;
     while (1) {
@@ -58,8 +69,8 @@ function dividedIntoGroups(ps) {
     };
 }
 function getCandidatesForRow(clues, ps, seenMap, row) {
-    const left = clues[clues.length - 1 - row];
-    const right = clues[clues.length / 4 + row];
+    const left = getLeftClue(clues, row);
+    const right = getRightClue(clues, row);
 
     let candidates;
     if (left && right) {
@@ -77,9 +88,11 @@ function getCandidatesForRow(clues, ps, seenMap, row) {
 function findIndexForRow(clues, ps, seenMap, indexes, row) {
     // candidate indexes
     const candidates = getCandidatesForRow(clues, ps, seenMap, row);
+    const column = seenMap.confirmed[row];
 
     while (++indexes[row] < candidates.length) {
         const heights = candidates[indexes[row]];
+        if (column >= 0 && heights[column] != clues.length / 4) continue;
         // check columns
         const hasError = heights.some((h, i) => {
             const arr = [];
@@ -92,11 +105,11 @@ function findIndexForRow(clues, ps, seenMap, indexes, row) {
                 arr.push(x);
             }
             // check from top and bottom
-            const top = clues[i];
+            const top = getTopClue(clues, i);
             if (top && seenFromLeft(arr) > top) return true;
             if (row == clues.length / 4 - 1) {
                 if (top && seenFromLeft(arr) != top) return true;
-                const bottom = clues[clues.length * 3 / 4 - 1 - i];
+                const bottom = getBottomClue(clues, i);
                 if (bottom && bottom != seenFromRight(arr)) return true;
             }
         });
@@ -127,3 +140,88 @@ function seenFromRight(heights) {
     }
     return count;
 }
+
+function fillGridForX(grid, x, clues) {
+    const n = clues.length / 4;
+    const mask = grid.map((row) => new Array(row.length));
+    const done = n - x;
+    let i, j, k, indexes;
+    // check by row
+    for (i = 0; i < n; i++) {
+        const left = getLeftClue(clues, i);
+        const right = getRightClue(clues, i);
+        for (j = 0; j < n; j++) {
+            mask[i][j] = grid[i][j] || (left == 1 && j) || (right == 1 && j != n - 1)
+                    || j < left - done - 1 || n - 1 - j < right - done - 1;
+        }
+    }
+
+    // check by column
+    for (j = 0; j < n; j++) {
+        const top = getTopClue(clues, j);
+        const bottom = getBottomClue(clues, j);
+        for (i = 0; i < n; i++) {
+            mask[i][j] = mask[i][j] || (top == 1 && i) || (bottom == 1 && i != n - 1)
+                    || i < top - done - 1 || n - 1 - i < bottom - done - 1;
+        }
+    }
+
+    let confirmed = 0;
+    let found = true;
+    while (confirmed < n && found) {
+        found = false;
+
+        // update the corresponding column
+        for (i = 0; i < n; i++) {
+            indexes = [];
+            for (j = 0; j < n; j++) {
+                if (!mask[i][j]) indexes.push(j);
+            }
+            if (indexes.length == 1) {
+                found = true;
+                confirmed++;
+
+                j = indexes[0];
+                grid[i][j] = x;
+                for (k = 0; k < n; k++) {
+                    mask[k][j] = true;
+                }
+                break;
+            }
+        }
+        if (found) continue;
+
+        // update the corresponding row
+        for (j = 0; j < n; j++) {
+            indexes = [];
+            for (i = 0; i < n; i++) {
+                if (!mask[i][j]) indexes.push(i);
+            }
+            if (indexes.length == 1) {
+                found = true;
+                confirmed++;
+
+                i = indexes[0];
+                grid[i][j] = x;
+                for (k = 0; k < n; k++) {
+                    mask[i][k] = true;
+                }
+                break;
+            }
+        }
+        if (found) continue;
+    }
+}
+function getLeftClue(clues, row) {
+    return clues[clues.length - 1 - row];
+}
+function getRightClue(clues, row) {
+    return clues[clues.length / 4 + row];
+}
+function getTopClue(clues, col) {
+    return clues[col];
+}
+function getBottomClue(clues, col) {
+    return clues[clues.length * 3 / 4 - 1 - col];
+}
+
