@@ -4,7 +4,8 @@ function solvePuzzle(clues) {
     const seenMap = dividedIntoGroups(ps);
 
     const grid = new Array(n).fill(0).map(() => new Array(n));
-    fillGridForX(grid, n, clues);
+    // mask impossible locations of the highest
+    seenMap.mask = fillGridForX(grid, n, clues);
     // determine columns of the highest
     seenMap.confirmed = grid.map((row) => {
         let j = -1;
@@ -86,15 +87,18 @@ function getCandidatesForRow(clues, ps, seenMap, row) {
 }
 
 function findIndexForRow(clues, ps, seenMap, indexes, row) {
+    const n = clues.length / 4;
     // candidate indexes
     const candidates = getCandidatesForRow(clues, ps, seenMap, row);
     const column = seenMap.confirmed[row];
 
     while (++indexes[row] < candidates.length) {
         const heights = candidates[indexes[row]];
-        if (column >= 0 && heights[column] != clues.length / 4) continue;
+        if (column >= 0 && heights[column] != n) continue;
         // check columns
         const hasError = heights.some((h, i) => {
+            if (h == n && column < 0 && seenMap.mask[row][i]) return true;
+
             const arr = [];
             const map = {};
             for (let j = 0; j <= row; j++) {
@@ -211,6 +215,8 @@ function fillGridForX(grid, x, clues) {
         }
         if (found) continue;
     }
+
+    return mask;
 }
 function getLeftClue(clues, row) {
     return clues[clues.length - 1 - row];
