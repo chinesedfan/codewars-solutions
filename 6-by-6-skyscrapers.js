@@ -5,7 +5,7 @@ function solvePuzzle(clues) {
 
     const grid = new Array(n).fill(0).map(() => new Array(n).fill(0));
     // limit some possible values
-    const mask = fillGridForX(grid, n, clues);
+    const mask = fillGrid(grid, clues);
 
     const indexes = new Array(n).fill(-1); // index of each row in permutations
     let row = 0;
@@ -138,101 +138,110 @@ function seenFromRight(heights) {
     return count;
 }
 
-function fillGridForX(grid, x, clues) {
+function fillGrid(grid, clues) {
     const n = clues.length / 4;
-    const done = n - x;
-
+    // bit x means it can not be x, and x = 1 ~ n
+    const mask = new Array(n).fill(0).map(() => new Array(n).fill(0));
     const maskAll = Math.pow(2, n) - 1; // every bit is 1
-    const maskX = 1 << x - 1;
-    const mask = grid.map((row) => row.map((val) => val ? ~(1 << val - 1) & maskAll : 0));
 
-    let i, j, indexes;
+    let i, j, k;
     // check by row
     for (i = 0; i < n; i++) {
-        const left = getLeftClue(clues, i) - done;
-        const right = getRightClue(clues, i) - done;
+        const left = getLeftClue(clues, i);
+        const right = getRightClue(clues, i);
         for (j = 0; j < n; j++) {
-            if (left == x) {
-                mask[i][j] = ~(1 << j) & maskAll;
-                maskTheSameLine(mask, i, j, j + 1);
-            } else if (right == x) {
-                mask[i][j] = ~(1 << n - j - 1) & maskAll;
-                maskTheSameLine(mask, i, j, n - j);
-            } else if (shouldMaskForX(j, n, left, right)) {
-                mask[i][j] |= maskX;
+            if ((left == 1 && !j) || (right == 1 && j == n - 1)) {
+                mask[i][j] = ~(1 << n - 1) & maskAll;
+                maskTheSameLine(mask, i, j, n);
+                continue;
+            }
+
+            for (k = 1; k <= n; k++) {
+                const behind = n - k + 1;
+                if (j + behind < left || n - 1 - j + behind < right) mask[i][j] |= 1 << k - 1;
             }
         }
     }
 
     // check by column
     for (j = 0; j < n; j++) {
-        const top = getTopClue(clues, j) - done;
-        const bottom = getBottomClue(clues, j) - done;
+        const top = getTopClue(clues, j);
+        const bottom = getBottomClue(clues, j);
         for (i = 0; i < n; i++) {
-            if (top == x) {
-                mask[i][j] = ~(1 << i) & maskAll;
-                maskTheSameLine(mask, i, j, i + 1);
-            } else if (bottom == x) {
-                mask[i][j] = ~(1 << n - i - 1) & maskAll;
-                maskTheSameLine(mask, i, j, n - i);
-            } else if (shouldMaskForX(i, n, top, bottom)) {
-                mask[i][j] |= maskX;
+            if ((top == 1 && !i) || (bottom == 1 && i == n - 1)) {
+                mask[i][j] = ~(1 << n - 1) & maskAll;
+                maskTheSameLine(mask, i, j, n);
+                continue;
+            }
+
+            for (k = 1; k <= n; k++) {
+                const behind = n - k + 1;
+                if (i + behind < top || n - 1 - i + behind < bottom) mask[i][j] |= 1 << k - 1;
             }
         }
     }
 
-    let confirmed = 0;
-    let found = true;
-    while (confirmed < n && found) {
-        found = false;
-
-        // update the corresponding column
-        for (i = 0; i < n; i++) {
-            indexes = [];
-            for (j = 0; j < n; j++) {
-                if (!(mask[i][j] & maskX)) indexes.push(j);
-            }
-            if (indexes.length == 1) {
-                j = indexes[0];
-                if (grid[i][j] == x) continue;
-                found = true;
-                confirmed++;
-
-                grid[i][j] = x;
-                mask[i][j] = ~maskX & maskAll;
-                maskTheSameLine(mask, i, j, x);
-                break;
-            }
-        }
-        if (found) continue;
-
-        // update the corresponding row
-        for (j = 0; j < n; j++) {
-            indexes = [];
-            for (i = 0; i < n; i++) {
-                if (!(mask[i][j] & maskX)) indexes.push(i);
-            }
-            if (indexes.length == 1) {
-                i = indexes[0];
-                if (grid[i][j] == x) continue;
-                found = true;
-                confirmed++;
-
-                grid[i][j] = x;
-                mask[i][j] = ~maskX & maskAll;
-                maskTheSameLine(mask, i, j, x);
-                break;
-            }
-        }
-        if (found) continue;
+    // try to find unique possible
+    while (1) {
+        if (findUniqueBit(grid, mask, n)) continue;
+        if (findUniqueCol(grid, mask, n)) continue;
+        if (findUniqueRow(grid, mask, n)) continue;
+        break;
     }
 
-    // bit x means it can not be x, and x = 1 ~ n
     return mask;
 }
-function shouldMaskForX(x, n, left, right) {
-    return (left == 1 && !!x) || (right == 1 && x != n - 1) // only 1, should be the first
-            || x < left - 1 || n - 1 - x < right - 1;       // should reserve some slots
+
+function findUniqueBit(grid, mask, n) {
+    let i, j, k;
+    for (i = 0; i < n; i++) {
+        for (j = 0; j < n; j++) {
+            if (grid[i][j]) continue;
+
+            k = findUniqueIndex(n, (bit) => !(mask[i][j] & (1 << bit)));
+            if (k >= 0) {
+                grid[i][j] = k + 1;
+                maskTheSameLine(mask, i, j, k + 1);
+                return true;
+            }
+        }
+    }
+    return false;
+}
+function findUniqueCol(grid, mask, n) {
+    let i, j, k;
+    for (i = 0; i < n; i++) {
+        for (k = 0; k < n; k++) {
+            j = findUniqueIndex(n, (col) => !grid[i][col] && !(mask[i][col] & (1 << k)));
+            if (j >= 0) {
+                grid[i][j] = k + 1;
+                maskTheSameLine(mask, i, j, k + 1);
+                return true;
+            }
+        }
+    }
+    return false;
+}
+function findUniqueRow(grid, mask, n) {
+    let i, j, k;
+    for (j = 0; j < n; j++) {
+        for (k = 0; k < n; k++) {
+            i = findUniqueIndex(n, (row) => !grid[row][j] && !(mask[row][j] & (1 << k)));
+            if (i >= 0) {
+                grid[i][j] = k + 1;
+                maskTheSameLine(mask, i, j, k + 1);
+                return true;
+            }
+        }
+    }
+    return false;
+}
+function findUniqueIndex(n, fn) {
+    const indexes = [];
+    for (let i = 0; i < n; i++) {
+        if (fn(i)) indexes.push(i);
+    }
+    return indexes.length == 1 ? indexes[0] : -1;
 }
 function maskTheSameLine(mask, i, j, x) {
     const n = mask.length;
@@ -256,4 +265,3 @@ function getTopClue(clues, col) {
 function getBottomClue(clues, col) {
     return clues[clues.length * 3 / 4 - 1 - col];
 }
-
