@@ -3,22 +3,14 @@ function solvePuzzle(clues) {
     const ps = generatePermutations(n);
     const seenMap = dividedIntoGroups(ps);
 
-    const grid = new Array(n).fill(0).map(() => new Array(n));
-    // mask impossible locations of the highest
-    seenMap.mask = fillGridForX(grid, n, clues);
-    // determine columns of the highest
-    seenMap.confirmed = grid.map((row) => {
-        let j = -1;
-        row.forEach((x, k) => {
-            if (x) j = k;
-        });
-        return j;
-    });
+    const grid = new Array(n).fill(0).map(() => new Array(n).fill(0));
+    // limit some possible values
+    const mask = fillGridForX(grid, n, clues);
 
     const indexes = new Array(n).fill(-1); // index of each row in permutations
     let row = 0;
     while (1) {
-        if (findIndexForRow(clues, ps, seenMap, indexes, row)) {
+        if (findIndexForRow(clues, ps, indexes, row, seenMap, grid, mask)) {
             row++;
             // solved
             if (row >= n) break;
@@ -86,24 +78,25 @@ function getCandidatesForRow(clues, ps, seenMap, row) {
     return candidates;
 }
 
-function findIndexForRow(clues, ps, seenMap, indexes, row) {
+function findIndexForRow(clues, ps, indexes, row, /* preset info */ seenMap, grid, mask) {
     const n = clues.length / 4;
     // candidate indexes
     const candidates = getCandidatesForRow(clues, ps, seenMap, row);
-    const column = seenMap.confirmed[row];
+    const column = grid[row].indexOf(n);
 
     while (++indexes[row] < candidates.length) {
         const heights = candidates[indexes[row]];
         if (column >= 0 && heights[column] != n) continue;
         // check columns
         const hasError = heights.some((h, i) => {
-            if (h == n && column < 0 && seenMap.mask[row][i]) return true;
+            // conflict with the mask
+            if (mask[row][i] & (1 << h - 1)) return true;
 
             const arr = [];
             const map = {};
             for (let j = 0; j <= row; j++) {
                 const x = j < row ? getCandidatesForRow(clues, ps, seenMap, j)[indexes[j]][i] : h;
-                if (map[x]) return true;
+                if (map[x]) return true; // TODO: optimize to check duplicated
 
                 map[x] = 1;
                 arr.push(x);
@@ -147,26 +140,44 @@ function seenFromRight(heights) {
 
 function fillGridForX(grid, x, clues) {
     const n = clues.length / 4;
-    const mask = grid.map((row) => new Array(row.length));
     const done = n - x;
-    let i, j, k, indexes;
+
+    const maskAll = Math.pow(2, n) - 1; // every bit is 1
+    const maskX = 1 << x - 1;
+    const mask = grid.map((row) => row.map((val) => val ? ~(1 << val - 1) & maskAll : 0));
+
+    let i, j, indexes;
     // check by row
     for (i = 0; i < n; i++) {
-        const left = getLeftClue(clues, i);
-        const right = getRightClue(clues, i);
+        const left = getLeftClue(clues, i) - done;
+        const right = getRightClue(clues, i) - done;
         for (j = 0; j < n; j++) {
-            mask[i][j] = grid[i][j] || (left == 1 && j) || (right == 1 && j != n - 1)
-                    || j < left - done - 1 || n - 1 - j < right - done - 1;
+            if (left == x) {
+                mask[i][j] = ~(1 << j) & maskAll;
+                maskTheSameLine(mask, i, j, j + 1);
+            } else if (right == x) {
+                mask[i][j] = ~(1 << n - j - 1) & maskAll;
+                maskTheSameLine(mask, i, j, n - j);
+            } else if (shouldMaskForX(j, n, left, right)) {
+                mask[i][j] |= maskX;
+            }
         }
     }
 
     // check by column
     for (j = 0; j < n; j++) {
-        const top = getTopClue(clues, j);
-        const bottom = getBottomClue(clues, j);
+        const top = getTopClue(clues, j) - done;
+        const bottom = getBottomClue(clues, j) - done;
         for (i = 0; i < n; i++) {
-            mask[i][j] = mask[i][j] || (top == 1 && i) || (bottom == 1 && i != n - 1)
-                    || i < top - done - 1 || n - 1 - i < bottom - done - 1;
+            if (top == x) {
+                mask[i][j] = ~(1 << i) & maskAll;
+                maskTheSameLine(mask, i, j, i + 1);
+            } else if (bottom == x) {
+                mask[i][j] = ~(1 << n - i - 1) & maskAll;
+                maskTheSameLine(mask, i, j, n - i);
+            } else if (shouldMaskForX(i, n, top, bottom)) {
+                mask[i][j] |= maskX;
+            }
         }
     }
 
@@ -179,17 +190,17 @@ function fillGridForX(grid, x, clues) {
         for (i = 0; i < n; i++) {
             indexes = [];
             for (j = 0; j < n; j++) {
-                if (!mask[i][j]) indexes.push(j);
+                if (!(mask[i][j] & maskX)) indexes.push(j);
             }
             if (indexes.length == 1) {
+                j = indexes[0];
+                if (grid[i][j] == x) continue;
                 found = true;
                 confirmed++;
 
-                j = indexes[0];
                 grid[i][j] = x;
-                for (k = 0; k < n; k++) {
-                    mask[k][j] = true;
-                }
+                mask[i][j] = ~maskX & maskAll;
+                maskTheSameLine(mask, i, j, x);
                 break;
             }
         }
@@ -199,25 +210,40 @@ function fillGridForX(grid, x, clues) {
         for (j = 0; j < n; j++) {
             indexes = [];
             for (i = 0; i < n; i++) {
-                if (!mask[i][j]) indexes.push(i);
+                if (!(mask[i][j] & maskX)) indexes.push(i);
             }
             if (indexes.length == 1) {
+                i = indexes[0];
+                if (grid[i][j] == x) continue;
                 found = true;
                 confirmed++;
 
-                i = indexes[0];
                 grid[i][j] = x;
-                for (k = 0; k < n; k++) {
-                    mask[i][k] = true;
-                }
+                mask[i][j] = ~maskX & maskAll;
+                maskTheSameLine(mask, i, j, x);
                 break;
             }
         }
         if (found) continue;
     }
 
+    // bit x means it can not be x, and x = 1 ~ n
     return mask;
 }
+function shouldMaskForX(x, n, left, right) {
+    return (left == 1 && !!x) || (right == 1 && x != n - 1) // only 1, should be the first
+            || x < left - 1 || n - 1 - x < right - 1;       // should reserve some slots
+}
+function maskTheSameLine(mask, i, j, x) {
+    const n = mask.length;
+
+    let k;
+    for (k = 0; k < n; k++) {
+        if (k != j) mask[i][k] |= 1 << x - 1;
+        if (k != i) mask[k][j] |= 1 << x - 1;
+    }
+}
+
 function getLeftClue(clues, row) {
     return clues[clues.length - 1 - row];
 }
