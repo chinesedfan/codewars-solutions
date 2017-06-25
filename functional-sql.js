@@ -4,23 +4,28 @@ class SQL {
         this.groupedFilters = [];
 
         this.executed = false;
+        this.identical = (x) => x;
     }
 
     select(fn) {
         if (this.selectFn) throw new Error('Duplicate SELECT');
 
-        this.selectFn = fn;
+        this.selectFn = fn || this.identical;
         return this;
     }
     from() {
         if (this.input) throw new Error('Duplicate FROM');
 
         const inputs = Array.prototype.slice.call(arguments, 0);
-        if (inputs.length > 1) {
-            this.input = inputs.map((_, i) => inputs.map((input) => input[i]));
-        } else {
-            this.input = inputs[0] || [];
-        }
+        this.input = inputs.length <= 1 ? inputs[0].map(this.identical) : inputs.reverse().reduce((result, input, i) => {
+            if (!i) return input.map((item) => [item]);
+
+            let newResult = [];
+            input.forEach((item) => {
+                newResult = newResult.concat(result.map((arr) => [item].concat(arr)));
+            });
+            return newResult;
+        }, []);
         return this;
     }
     where() {
@@ -50,18 +55,21 @@ class SQL {
 
         let result;
         // from
-        result = this.input;
+        result = this.input || [];
         // where
-        this.filters.forEach((filter) => {
-            result = result.filter(filter);
-        });
+        result = this.doFilter(result, this.filters);
         // groupby
-        // having
-        // orderby
-
-        // select
-        if (this.selectFn) {
-            result = result.map(this.selectFn);
+        if (this.groupByFnList) {
+            result = this.doGroupBy(result, 0);
+        } else {
+            // orderby
+            if (this.orderByFn) {
+                result.sort(this.orderByFn);
+            }
+            // select
+            if (this.selectFn) {
+                result = result.map(this.selectFn);
+            }
         }
 
         // done
@@ -74,6 +82,41 @@ class SQL {
         if (fns.length == 1) return fns[0];
 
         return (item) => fns.some((f) => f(item));
+    }
+    doFilter(result, filters) {
+        filters.forEach((fn) => {
+            result = result.filter(fn);
+        });
+        return result;
+    }
+    doGroupBy(result, i) {
+        const last = i == this.groupByFnList.length - 1;
+
+        const map = {};
+        result.forEach((item) => {
+            const key = this.groupByFnList[i](item);
+            map[key] = map[key] || [key, []];
+            map[key][1].push(item);
+        });
+
+        result = [];
+        for (let key in map) {
+            result.push([map[key][0], last ? map[key][1] : this.doGroupBy(map[key][1], i + 1)]);
+        }
+
+        if (last) {
+            // having
+            result = this.doFilter(result, this.groupedFilters);
+            // orderby
+            if (this.orderByFn) {
+                result.sort(this.orderByFn);
+            }
+            // select
+            if (this.selectFn) {
+                result = result.map(this.selectFn);
+            }
+        }
+        return result;
     }
 }
 
