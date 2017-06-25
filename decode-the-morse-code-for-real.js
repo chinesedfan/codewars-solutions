@@ -1,95 +1,100 @@
-var divideIntoGroups = function(nums, centers) {
-    var gs = centers.map((c) => {
-        return {};
+var divideIntoGroups = function(items, centers) {
+    var maps = centers.map((c) => {
+        return {}; // length -> count
     });
-    var sum = nums.reduce((sum, n) => {
-        var delta;
-        centers.some((c, i) => {
-            if (i == centers.length - 1 || n < (centers[i] + centers[i + 1]) / 2) {
-                delta = Math.abs(n - c);
-                gs[i][n] = 1;
-                return true;
-            }
-        });
-        return sum + delta * delta;
-    }, 0);
-    return {gs: gs, sum: sum};
-};
-var getNewCenter = function(nums) {
-    if (!nums.length) return -1;
-    return nums.map((s) => parseInt(s)).reduce((sum, n) => sum + n, 0) / nums.length;
-};
-
-var kmeans = function(nums, centers) {
-    var oldState = divideIntoGroups(nums, centers);
-
-    while (1) {
-        centers = oldState.gs.map((group) => getNewCenter(Object.keys(group)))
-                .map((c, i, list) => {
-                    // fix empty groups have no center
-                    return c < 0 ? (list[i - 1] + list[i + 1]) / 2 : c;
-                });
-        if (centers.length == 3) {
-            var rate = centers.reduce((sum, c) => sum + c, 0) / (1 + 3 + 7);
-            centers = [rate, rate * 3, rate * 7];
+    var sum = items.reduce((result, item) => {
+        var n = item.size;
+        var index = centers.findIndex((c, i) => i == centers.length - 1 || n <= (centers[i] + centers[i + 1]) / 2);
+        // no 1s whose length is 7
+        if (index == 2 && item.ch == '1') {
+            index = 1;
         }
+        var delta = Math.abs(n - centers[index]);
+        maps[index][n] = maps[index][n] ? maps[index][n] + 1 : 1;
+        return result + delta * delta;
+    }, 0);
+    return {maps: maps, sum: sum};
+};
+var getNewCenter = function(map) {
+    var sum = 0, count = 0;
+    for (var s in map) {
+        var c = map[s];
+        sum += s * c;
+        count += c;
+    }
+    return count ? sum / count : 0;
+};
 
-        var newState = divideIntoGroups(nums, centers);
+var kmeans = function(items, centers) {
+    var oldState = divideIntoGroups(items, centers);
+
+    var limit = 100;
+    while (limit--) {
+        centers = oldState.maps.map(getNewCenter);
+
+        var newState = divideIntoGroups(items, centers);
         if (Math.abs(oldState.sum - newState.sum) < 0.01) break;
         oldState = newState;
     }
-    return newState.gs;
+    return newState.maps;
 };
 
 var decodeBitsAdvanced = function(bits){
     // trim 0s
     bits = bits.replace(/^0+/, '').replace(/0+$/, '');
+    if (!bits) return '';
 
     // count 0s and 1s
-    var map0 = {}, map1 = {};
-    bits.replace(/0+|1+/g, (match) => {
-        var map = match[0] == '0' ? map0 : map1;
-        map[match.length] = 1;
-        return match;
+    var items = bits.match(/([01])\1*/g).map((match) => {
+        return {
+            ch: match[0],
+            size: match.length
+        };
     });
-    var count0 = Object.keys(map0).sort((a, b) => a - b).map((k) => parseInt(k));
-    var count1 = Object.keys(map1).sort((a, b) => a - b).map((k) => parseInt(k));
-
-    // determinate how many centers(ignore only 3 & 7)
-    var min = count0.length ? Math.min(count0[0], count1[0]) : count1[0];
-    var max = count0.length
-            ? Math.max(count0[count0.length - 1], count1[count1.length - 1])
-            : count1[count1.length - 1];
-    var centers;
-    if (max >= min * (3 + 7) / 2) {
-        min = max / 7;
-        centers = [min, min * 3, min * 7];
-    } else if (max >= min * (1 + 3) / 2) {
-        min = max / 3;
-        centers = [min, min * 3];
-    } else {
-        centers = [min];
-    }
 
     // k-means
-    var counts = Object.keys(Object.assign({}, map0, map1)).map((k) => parseInt(k));
-    var gs = kmeans(counts, centers);
+    var centers = [1, 3, 7];
+    var sizeMaps = kmeans(items, centers);
 
-    if (counts.length == 26) {
-        // cheat for the last one
-        gs = [
-            {'1':1,'2':1,'3':1,'4':1,'5':1,'6':1,'7':1},
-            {'8':1,'9':1,'10':1,'11':1,'12':1,'13':1,'14':1,'15':1,'16':1},
-            {'18':1,'19':1,'20':1,'21':1,'22':1,'23':1,'24':1,'25':1,'26':1,'28':1}
-        ];
+    // real centers should in the middle
+    var avgs = sizeMaps.map((m) => {
+        var keys = Object.keys(m).map((s) => parseInt(s));
+        return (Math.min.apply(Math, keys) + Math.max.apply(Math, keys)) / 2;
+    });
+    var valid = avgs.filter((val) => val).length;
+
+    // 2 limits to separate into 3 groups
+    var limit1, limit2;
+    if (valid == 3) {
+        limit1 = (avgs[0] + avgs[1]) / 2;
+        limit2 = (avgs[1] + avgs[2]) / 2;
+    } else if (valid == 2) {
+        var min = avgs[0] || avgs[1];
+        var max = avgs[2] || avgs[1];
+        if (max >= min * (3 + 7) / 2) {
+            // 1 and 7
+            var avg3 = (min + max) * 3 / (1 + 7);
+            limit1 = (min + avg3) / 2;
+            limit2 = (avg3 + max) / 2;
+        } else if (max >= min * (1 + 3) / 2) {
+            // 1 and 3
+            limit1 = (min + max) / 2;
+            limit2 = max;
+        } else {
+            // 3 and 7
+            limit1 = min;
+            limit2 = (min + max) / 2;
+        }
+    } else if (valid == 1) {
+        limit1 = avgs[0] || avgs[1] || avgs[2];
     }
 
     return bits.replace(/0+|1+/g, (match) => {
         if (match[0] == '1') {
-            return gs[0][match.length] ? '.' : '-';
+            return match.length <= limit1 ? '.' : '-';
         } else {
-            if (gs[0][match.length]) return '';
-            if (gs[1][match.length]) return ' ';
+            if (match.length <= limit1) return '';
+            if (match.length <= limit2) return ' ';
             return '   ';
         }
     });
