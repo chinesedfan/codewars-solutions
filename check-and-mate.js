@@ -11,38 +11,33 @@ class Grid {
         });
     }
     isCheck() {
-        return this.pieces.filter(this.isThreating.bind(this));
+        return this.pieces.filter((p) => this.isThreating(this.king, p));
     }
     isMate() {
         const pieces = this.isCheck();
         return pieces.length && this.pieces.every((p) => !this.isSolutionExisted(p));
     }
 
-    isThreating(piece) {
+    isThreating(king, piece) {
         if (piece.owner == this.player) return false;
 
         switch (piece.piece) {
         case 'pawn':
-            return this.checkCell(piece, 1, this.player ? -1 : 1)
-                    || this.checkCell(piece, -1, this.player ? -1 : 1);
+            return this.checkCell(king, piece, 1, this.player ? -1 : 1)
+                    || this.checkCell(king, piece, -1, this.player ? -1 : 1);
         case 'knight':
-            return this.checkCell(piece, 1, 2) || this.checkCell(piece, 1, -2)
-                    || this.checkCell(piece, -1, 2) || this.checkCell(piece, -1, -2)
-                    || this.checkCell(piece, 2, 1) || this.checkCell(piece, 2, -1)
-                    || this.checkCell(piece, -2, 1) || this.checkCell(piece, -2, -1);
+            return this.checkCell(king, piece, 1, 2) || this.checkCell(king, piece, 1, -2)
+                    || this.checkCell(king, piece, -1, 2) || this.checkCell(king, piece, -1, -2)
+                    || this.checkCell(king, piece, 2, 1) || this.checkCell(king, piece, 2, -1)
+                    || this.checkCell(king, piece, -2, 1) || this.checkCell(king, piece, -2, -1);
         case 'rook':
-            return this.checkSameLine(piece, 1, 0) || this.checkSameLine(piece, 0, 1)
-                    || this.checkSameLine(piece, -1, 0) || this.checkSameLine(piece, 0, -1);
+            return this.checkRowAndColumn(king, piece);
         case 'bishop':
-            return this.checkSameLine(piece, 1, 1) || this.checkSameLine(piece, 1, -1)
-                    || this.checkSameLine(piece, -1, 1) || this.checkSameLine(piece, -1, -1);
+            return this.checkDiagonal(king, piece);
         case 'queen':
-            return this.checkSameLine(piece, 1, 0) || this.checkSameLine(piece, 0, 1)
-                    || this.checkSameLine(piece, -1, 0) || this.checkSameLine(piece, 0, -1)
-                    || this.checkSameLine(piece, 1, 1) || this.checkSameLine(piece, 1, -1)
-                    || this.checkSameLine(piece, -1, 1) || this.checkSameLine(piece, -1, -1);
+            return this.checkRowAndColumn(king, piece) || this.checkDiagonal(king, piece);
         case 'king':
-            return Math.abs(piece.x - this.king.x) <= 1 && Math.abs(piece.y - this.king.y) <= 1;
+            return Math.abs(piece.x - king.x) <= 1 && Math.abs(piece.y - king.y) <= 1;
         default:
             throw new Error('unknow piece: ' + piece.piece);
         }
@@ -56,21 +51,31 @@ class Grid {
     isValid(x, y) {
         return x >= 0 && x < Grid.size && y >= 0 && y < Grid.size;
     }
-    checkCell(piece, deltaX, deltaY) {
-        const x = piece.x + deltaX;
-        const y = piece.y + deltaY;
-        return this.isValid(x, y) && this.king == this.grid[x][y];
-    }
-    checkSameLine(piece, deltaX, deltaY) {
-        let x = piece.x + deltaX, y = piece.y + deltaY;
-        while (this.isValid(x, y)) {
-            const other = this.grid[x][y];
-            if (other) return other == this.king;
+    isNotBlocked(king, piece) {
+        const deltaX = piece.x > king.x ? 1 : (piece.x < king.x ? -1 : 0);
+        const deltaY = piece.y > king.y ? 1 : (piece.y < king.y ? -1 : 0);
+        let x = piece.x + deltaX;
+        let y = piece.y + deltaY;
+
+        while (x != king.x && y != king.y && this.isValid(x, y)) {
+            if (this.grid[x][y]) return false;
 
             x += deltaX;
             y += deltaY;
         }
-        return false;
+        return true;
+    }
+    checkCell(king, piece, deltaX, deltaY) {
+        const x = piece.x + deltaX;
+        const y = piece.y + deltaY;
+        return this.isValid(x, y) && king == this.grid[x][y];
+    }
+    checkRowAndColumn(king, piece) {
+        return (piece.x == king.x || piece.y == king.y) && this.isNotBlocked(king, piece);
+    }
+    checkDiagonal(king, piece) {
+        return (piece.x + piece.y == king.x + king.y || piece.x - piece.y == king.x - king.y)
+                && this.isNotBlocked(king, piece);
     }
 }
 Grid.size = 8;
