@@ -1,16 +1,18 @@
 function solvePuzzle(clues) {
     const n = clues.length / 4;
     const ps = generatePermutations(n);
-    const seenMap = dividedIntoGroups(ps);
 
+    // group by seen
+    const seenMap = dividedIntoGroups(ps);
+    // calculate mask then filter candidates by row
     const grid = new Array(n).fill(0).map(() => new Array(n).fill(0));
-    // limit some possible values
     const mask = fillGrid(grid, clues);
+    const candidatesList = mask.map((_, r) => getCandidatesForRow(clues, ps, seenMap, mask, r));
 
     const indexes = new Array(n).fill(-1); // index of each row in permutations
     let row = 0;
     while (1) {
-        if (findIndexForRow(clues, ps, indexes, row, seenMap, grid, mask)) {
+        if (findIndexForRow(clues, ps, indexes, row, seenMap, grid, candidatesList)) {
             row++;
             // solved
             if (row >= n) break;
@@ -22,7 +24,7 @@ function solvePuzzle(clues) {
         }
     }
 
-    return indexes.map((i, r) => getCandidatesForRow(clues, ps, seenMap, r)[i]);
+    return indexes.map((i, r) => candidatesList[r][i]);
 }
 
 function generatePermutations(n) {
@@ -61,7 +63,7 @@ function dividedIntoGroups(ps) {
         total: totalMap
     };
 }
-function getCandidatesForRow(clues, ps, seenMap, row) {
+function getCandidatesForRow(clues, ps, seenMap, mask, row) {
     const left = getLeftClue(clues, row);
     const right = getRightClue(clues, row);
 
@@ -75,13 +77,20 @@ function getCandidatesForRow(clues, ps, seenMap, row) {
     } else {
         candidates = ps;
     }
+
+    candidates = candidates.filter((heights) => {
+        return heights.every((h, column) => {
+            return !(mask[row][column] & (1 << h - 1));
+        });
+    });
+
     return candidates;
 }
 
-function findIndexForRow(clues, ps, indexes, row, /* preset info */ seenMap, grid, mask) {
+function findIndexForRow(clues, ps, indexes, row, /* preset info */ seenMap, grid, candidatesList) {
     const n = clues.length / 4;
     // candidate indexes
-    const candidates = getCandidatesForRow(clues, ps, seenMap, row);
+    const candidates = candidatesList[row];
     const column = grid[row].indexOf(n);
 
     while (++indexes[row] < candidates.length) {
@@ -89,13 +98,10 @@ function findIndexForRow(clues, ps, indexes, row, /* preset info */ seenMap, gri
         if (column >= 0 && heights[column] != n) continue;
         // check columns
         const hasError = heights.some((h, i) => {
-            // conflict with the mask
-            if (mask[row][i] & (1 << h - 1)) return true;
-
             const arr = [];
             const map = {};
             for (let j = 0; j <= row; j++) {
-                const x = j < row ? getCandidatesForRow(clues, ps, seenMap, j)[indexes[j]][i] : h;
+                const x = j < row ? candidatesList[j][indexes[j]][i] : h;
                 if (map[x]) return true; // TODO: optimize to check duplicated
 
                 map[x] = 1;
