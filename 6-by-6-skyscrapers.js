@@ -7,12 +7,12 @@ function solvePuzzle(clues) {
     // calculate mask then filter candidates by row
     const grid = new Array(n).fill(0).map(() => new Array(n).fill(0));
     const mask = fillGrid(grid, clues);
-    const candidatesList = mask.map((_, r) => getCandidatesForRow(clues, ps, seenMap, mask, r));
+    const candidatesList = mask.map((_, r) => getCandidatesForRow(r, clues, ps, seenMap, mask));
 
     const indexes = new Array(n).fill(-1); // index of each row in permutations
     let row = 0;
     while (1) {
-        if (findIndexForRow(clues, ps, indexes, row, seenMap, grid, candidatesList)) {
+        if (findIndexForRow(row, indexes, clues, ps, seenMap, candidatesList)) {
             row++;
             // solved
             if (row >= n) break;
@@ -63,7 +63,7 @@ function dividedIntoGroups(ps) {
         total: totalMap
     };
 }
-function getCandidatesForRow(clues, ps, seenMap, mask, row) {
+function getCandidatesForRow(row, clues, ps, seenMap, mask) {
     const left = getLeftClue(clues, row);
     const right = getRightClue(clues, row);
 
@@ -87,15 +87,11 @@ function getCandidatesForRow(clues, ps, seenMap, mask, row) {
     return candidates;
 }
 
-function findIndexForRow(clues, ps, indexes, row, /* preset info */ seenMap, grid, candidatesList) {
-    const n = clues.length / 4;
-    // candidate indexes
+function findIndexForRow(row, indexes, /* info */ clues, ps, seenMap, candidatesList) {
     const candidates = candidatesList[row];
-    const column = grid[row].indexOf(n);
 
     while (++indexes[row] < candidates.length) {
         const heights = candidates[indexes[row]];
-        if (column >= 0 && heights[column] != n) continue;
         // check columns
         const hasError = heights.some((h, i) => {
             const arr = [];
