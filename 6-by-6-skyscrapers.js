@@ -142,7 +142,6 @@ function fillGrid(grid, clues) {
     const n = clues.length / 4;
     // bit x means it can not be x, and x = 1 ~ n
     const mask = new Array(n).fill(0).map(() => new Array(n).fill(0));
-    const maskAll = Math.pow(2, n) - 1; // every bit is 1
 
     let i, j, k;
     // check by row
@@ -151,7 +150,6 @@ function fillGrid(grid, clues) {
         const right = getRightClue(clues, i);
         for (j = 0; j < n; j++) {
             if ((left == 1 && !j) || (right == 1 && j == n - 1)) {
-                mask[i][j] = ~(1 << n - 1) & maskAll;
                 maskTheSameLine(mask, i, j, n);
                 continue;
             }
@@ -169,7 +167,6 @@ function fillGrid(grid, clues) {
         const bottom = getBottomClue(clues, j);
         for (i = 0; i < n; i++) {
             if ((top == 1 && !i) || (bottom == 1 && i == n - 1)) {
-                mask[i][j] = ~(1 << n - 1) & maskAll;
                 maskTheSameLine(mask, i, j, n);
                 continue;
             }
@@ -245,12 +242,14 @@ function findUniqueIndex(n, fn) {
 }
 function maskTheSameLine(mask, i, j, x) {
     const n = mask.length;
+    const maskAll = Math.pow(2, n) - 1; // every bit is 1
 
     let k;
     for (k = 0; k < n; k++) {
         if (k != j) mask[i][k] |= 1 << x - 1;
         if (k != i) mask[k][j] |= 1 << x - 1;
     }
+    mask[i][j] = ~(1 << x - 1) & maskAll;
 }
 
 function getLeftClue(clues, row) {
