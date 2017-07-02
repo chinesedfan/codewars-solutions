@@ -7,7 +7,8 @@ function solvePuzzle(clues) {
     // calculate mask then filter candidates by row
     const grid = new Array(n).fill(0).map(() => new Array(n).fill(0));
     const mask = fillGrid(grid, clues);
-    const candidatesList = new Array(n).fill(0).map((_, r) => getCandidatesForRow(r, clues, ps, seenMap, mask));
+    let candidatesList = new Array(n).fill(0).map((_, r) => getCandidatesForRow(r, clues, ps, seenMap));
+    candidatesList = pruneCandidatesList(candidatesList, grid, mask);
 
     let state = {
         mask: mask,
@@ -72,7 +73,7 @@ function dividedIntoGroups(ps) {
         total: totalMap
     };
 }
-function getCandidatesForRow(row, clues, ps, seenMap, mask) {
+function getCandidatesForRow(row, clues, ps, seenMap) {
     const left = getLeftClue(clues, row);
     const right = getRightClue(clues, row);
 
@@ -87,13 +88,35 @@ function getCandidatesForRow(row, clues, ps, seenMap, mask) {
         candidates = ps;
     }
 
-    candidates = candidates.filter((heights) => {
-        return heights.every((h, column) => {
-            return !(mask[row][column] & (1 << h - 1));
+    return candidates;
+}
+function filterCandidatesListByMask(candidatesList, mask) {
+    return candidatesList.map((candidates, row) => {
+        return candidates.filter((heights) => {
+            return heights.every((h, column) => {
+                return !(mask[row][column] & (1 << h - 1));
+            });
         });
     });
+}
+function pruneCandidatesList(candidatesList, grid, mask) {
+    const confirmed = [];
 
-    return candidates;
+    while (1) {
+        candidatesList = filterCandidatesListByMask(candidatesList, mask);
+
+        const row = findUniqueIndex(candidatesList.length, (i) => !confirmed[i] && candidatesList[i].length == 1);
+        if (row < 0) break;
+
+        const heights = candidatesList[row][0];
+        heights.forEach((h, column) => {
+            maskTheSameLine(mask, row, column, h);
+        });
+        pruneGridAndMask(grid, mask, mask.length);
+
+        confirmed[row] = true;
+    }
+    return candidatesList;
 }
 
 function findIndexForRow(row, indexes, /* info */ clues, ps, candidatesList, state) {
@@ -203,12 +226,7 @@ function fillGrid(grid, clues) {
     }
 
     // try to find unique possible
-    while (1) {
-        if (findUniqueBit(grid, mask, n)) continue;
-        if (findUniqueCol(grid, mask, n)) continue;
-        if (findUniqueRow(grid, mask, n)) continue;
-        break;
-    }
+    pruneGridAndMask(grid, mask, n);
 
     return mask;
 }
@@ -220,6 +238,14 @@ function cloneState(state) {
     };
 }
 
+function pruneGridAndMask(grid, mask, n) {
+    while (1) {
+        if (findUniqueBit(grid, mask, n)) continue;
+        if (findUniqueCol(grid, mask, n)) continue;
+        if (findUniqueRow(grid, mask, n)) continue;
+        break;
+    }
+}
 function findUniqueBit(grid, mask, n) {
     let i, j, k;
     for (i = 0; i < n; i++) {
