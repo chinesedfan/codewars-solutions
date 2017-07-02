@@ -7,18 +7,27 @@ function solvePuzzle(clues) {
     // calculate mask then filter candidates by row
     const grid = new Array(n).fill(0).map(() => new Array(n).fill(0));
     const mask = fillGrid(grid, clues);
-    const candidatesList = mask.map((_, r) => getCandidatesForRow(r, clues, ps, seenMap, mask));
+    const candidatesList = new Array(n).fill(0).map((_, r) => getCandidatesForRow(r, clues, ps, seenMap, mask));
+
+    let state = {
+        mask: mask,
+        tops: new Array(n).fill(0),
+        maxs: new Array(n).fill(0)
+    };
+    const stateList = [cloneState(state)];
 
     const indexes = new Array(n).fill(-1); // index of each row in permutations
     let row = 0;
     while (1) {
-        if (findIndexForRow(row, indexes, clues, ps, seenMap, candidatesList)) {
+        if (findIndexForRow(row, indexes, clues, ps, candidatesList, state)) {
             row++;
+            stateList[row] = cloneState(state);
             // solved
             if (row >= n) break;
         } else {
             indexes[row] = -1;
             row--;
+            state = cloneState(stateList[row]);
             // invalid
             if (row < 0) throw new Error('can not solve');
         }
@@ -87,33 +96,46 @@ function getCandidatesForRow(row, clues, ps, seenMap, mask) {
     return candidates;
 }
 
-function findIndexForRow(row, indexes, /* info */ clues, ps, seenMap, candidatesList) {
+function findIndexForRow(row, indexes, /* info */ clues, ps, candidatesList, state) {
     const candidates = candidatesList[row];
 
     while (++indexes[row] < candidates.length) {
         const heights = candidates[indexes[row]];
+        const otherState = cloneState(state);
+        const mask = otherState.mask;
+        const tops = otherState.tops;
+        const maxs = otherState.maxs;
         // check columns
-        const hasError = heights.some((h, i) => {
-            const arr = [];
-            const map = {};
-            for (let j = 0; j <= row; j++) {
-                const x = j < row ? candidatesList[j][indexes[j]][i] : h;
-                if (map[x]) return true; // TODO: optimize to check duplicated
+        const hasError = heights.some((h, column) => {
+            // check duplicated
+            if (mask[row][column] & (1 << h - 1)) return true;
+            maskTheSameLine(mask, row, column, h);
+            // check top
+            if (h > maxs[column]) {
+                maxs[column] = h;
+                tops[column]++;
 
-                map[x] = 1;
-                arr.push(x);
+                const top = getTopClue(clues, column);
+                if (top && tops[column] > top) return true;
             }
-            // check from top and bottom
-            const top = getTopClue(clues, i);
-            if (top && seenFromLeft(arr) > top) return true;
+            // check bottom
             if (row == clues.length / 4 - 1) {
-                if (top && seenFromLeft(arr) != top) return true;
-                const bottom = getBottomClue(clues, i);
+                const bottom = getBottomClue(clues, column);
+                if (!bottom) return false;
+
+                const arr = [];
+                for (let j = 0; j <= row; j++) {
+                    const x = j < row ? candidatesList[j][indexes[j]][column] : h;
+                    arr.push(x);
+                }
                 if (bottom && bottom != seenFromRight(arr)) return true;
             }
         });
         if (hasError) continue;
 
+        state.mask = mask;
+        state.tops = tops;
+        state.maxs = maxs;
         return true;
     }
     return false;
@@ -189,6 +211,13 @@ function fillGrid(grid, clues) {
     }
 
     return mask;
+}
+function cloneState(state) {
+    return {
+        mask: state.mask.map((row) => row.concat([])),
+        tops: state.tops.concat([]),
+        maxs: state.maxs.concat([])
+    };
 }
 
 function findUniqueBit(grid, mask, n) {
