@@ -84,7 +84,8 @@ Grid.size = 8;
 // the pieces is a check, otherwise false
 function isCheck(pieces, player) {
     const grid = new Grid(pieces, player);
-    return grid.isCheck();
+    const ps = grid.isCheck();
+    return ps.length ? ps : false;
 }
 
 // Returns true if the arrangement of the
