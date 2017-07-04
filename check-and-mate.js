@@ -11,20 +11,76 @@ class Grid {
         });
     }
     isCheck() {
-        return this.pieces.filter((p) => this.isThreating(this.king, p));
+        return this.pieces.filter((p) => this.isThreating(this.king, p, this.player));
     }
     isMate() {
         const pieces = this.isCheck();
-        return pieces.length && this.pieces.every((p) => !this.isSolutionExisted(p));
+
+        if (!pieces.length) return false;
+        if (pieces.length == 1) {
+            // kill or block
+            const candidates = this.whoCanSave(this.king, pieces[0]);
+            const canSolved = candidates.some((item) => {
+                return item.pieces.some((p) => {
+                    const gridBackup = this.cloneGrid();
+                    this.grid[p.x][p.y] = null;
+                    this.grid[item.x][item.y] = {
+                        piece: p.piece,
+                        owner: p.owner,
+                        x: item.x,
+                        y: item.y
+                    };
+
+                    const ps = this.isCheck().filter((other) => this.grid[other.x][other.y] == other);
+                    const stillChecking = ps.length;
+                    this.grid = gridBackup;
+                    return !stillChecking;
+                });
+            });
+            if (canSolved) return false;
+        }
+
+        // move the king
+        for (let x = this.king.x - 1; x - this.king.x <= 1; x++) {
+            for (let y = this.king.y - 1; y - this.king.y <= 1; y++) {
+                if (!this.isValid(x, y)) continue;
+
+                const other = this.grid[x][y];
+                if (other && other.owner == this.player) continue;
+
+                const gridBackup = this.cloneGrid();
+                const kingBackup = this.king;
+                this.grid[this.king.x][this.king.y] = null;
+                this.grid[x][y] = this.king = {
+                    piece: 'king',
+                    player: this.player,
+                    x: x,
+                    y: y
+                };
+
+                const ps = this.isCheck().filter((other) => this.grid[other.x][other.y] == other);
+                const stillChecking = ps.length;
+                if (!stillChecking) return false;
+                this.grid = gridBackup;
+                this.king = kingBackup;
+            }
+        }
+        return true;
     }
 
-    isThreating(king, piece) {
-        if (piece.owner == this.player) return false;
+    isThreating(king, piece, player) {
+        if (piece.owner == player) return false;
 
         switch (piece.piece) {
         case 'pawn':
-            return this.checkCell(king, piece, 1, this.player ? -1 : 1)
-                    || this.checkCell(king, piece, -1, this.player ? -1 : 1);
+            const deltaY = player ? -1 : 1;
+            if (!this.grid[king.x][king.y]) {
+                // the target is an empty slot
+                return this.checkCell(king, piece, 0, deltaY)
+                        || (!this.grid[piece.x][piece.y + deltaY] && this.checkCell(king, piece, 0, deltaY * 2));
+            }
+            return this.checkCell(king, piece, 1, deltaY)
+                    || this.checkCell(king, piece, -1, deltaY);
         case 'knight':
             return this.checkCell(king, piece, 1, 2) || this.checkCell(king, piece, 1, -2)
                     || this.checkCell(king, piece, -1, 2) || this.checkCell(king, piece, -1, -2)
@@ -42,22 +98,17 @@ class Grid {
             throw new Error('unknow piece: ' + piece.piece);
         }
     }
-    isSolutionExisted(piece) {
-        if (piece.owner != this.player) return false;
-
-        // TODO:
-    }
 
     isValid(x, y) {
         return x >= 0 && x < Grid.size && y >= 0 && y < Grid.size;
     }
     isNotBlocked(king, piece) {
-        const deltaX = piece.x > king.x ? 1 : (piece.x < king.x ? -1 : 0);
-        const deltaY = piece.y > king.y ? 1 : (piece.y < king.y ? -1 : 0);
+        const deltaX = piece.x > king.x ? -1 : (piece.x < king.x ? 1 : 0);
+        const deltaY = piece.y > king.y ? -1 : (piece.y < king.y ? 1 : 0);
         let x = piece.x + deltaX;
         let y = piece.y + deltaY;
 
-        while (x != king.x && y != king.y && this.isValid(x, y)) {
+        while (!(x == king.x && y == king.y) && this.isValid(x, y)) {
             if (this.grid[x][y]) return false;
 
             x += deltaX;
@@ -68,7 +119,7 @@ class Grid {
     checkCell(king, piece, deltaX, deltaY) {
         const x = piece.x + deltaX;
         const y = piece.y + deltaY;
-        return this.isValid(x, y) && king == this.grid[x][y];
+        return this.isValid(x, y) && x == king.x && y == king.y;
     }
     checkRowAndColumn(king, piece) {
         return (piece.x == king.x || piece.y == king.y) && this.isNotBlocked(king, piece);
@@ -76,6 +127,38 @@ class Grid {
     checkDiagonal(king, piece) {
         return (piece.x + piece.y == king.x + king.y || piece.x - piece.y == king.x - king.y)
                 && this.isNotBlocked(king, piece);
+    }
+
+    whoCanSave(king, piece) {
+        const deltaX = piece.x > king.x ? -1 : (piece.x < king.x ? 1 : 0);
+        const deltaY = piece.y > king.y ? -1 : (piece.y < king.y ? 1 : 0);
+        let x = piece.x;
+        let y = piece.y;
+
+        let candidates = [];
+        while (!(x == king.x && y == king.y) && this.isValid(x, y)) {
+            const target = {
+                owner: this.player ? 0 : 1,
+                x: x,
+                y: y
+            };
+            const ps = this.pieces.filter((p) => p.owner == this.player
+                    && p.piece != 'king' && this.isThreating(target, p, this.player ? 0 : 1));
+            if (ps.length) {
+                candidates.push({
+                    pieces: ps,
+                    x: x,
+                    y: y
+                });
+            }
+
+            x += deltaX;
+            y += deltaY;
+        }
+        return candidates; // includes some duplicated, but it doesn't matter
+    }
+    cloneGrid() {
+        return this.grid.map((row) => row.concat([]));
     }
 }
 Grid.size = 8;
