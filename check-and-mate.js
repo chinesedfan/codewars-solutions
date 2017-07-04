@@ -23,6 +23,9 @@ class Grid {
             const canSolved = candidates.some((item) => {
                 return item.pieces.some((p) => {
                     const gridBackup = this.cloneGrid();
+                    if (item.killed) {
+                        this.grid[item.killed.x][item.killed.y] = null;
+                    }
                     this.grid[p.x][p.y] = null;
                     this.grid[item.x][item.y] = {
                         piece: p.piece,
@@ -147,6 +150,7 @@ class Grid {
             if (ps.length) {
                 candidates.push({
                     pieces: ps,
+                    killed: x == piece.x && y == piece.y ? piece : null,
                     x: x,
                     y: y
                 });
@@ -154,6 +158,24 @@ class Grid {
 
             x += deltaX;
             y += deltaY;
+        }
+        // en passant
+        if (piece.piece == 'pawn' && Math.abs(piece.y - piece.prevY) == 2) {
+            let other;
+            if (this.isValid(piece.x - 1, piece.y)) {
+                other = this.grid[piece.x - 1][piece.y];
+            } else if (this.isValid(piece.x + 1, piece.y)) {
+                other = this.grid[piece.x + 1][piece.y];
+            }
+
+            if (other && other.owner == this.player && other.piece == 'pawn') {
+                candidates.push({
+                    pieces: [other],
+                    killed: piece,
+                    x: piece.x,
+                    y: piece.y + (this.player ? 1 : -1)
+                });
+            }
         }
         return candidates; // includes some duplicated, but it doesn't matter
     }
