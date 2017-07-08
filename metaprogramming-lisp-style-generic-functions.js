@@ -1,7 +1,15 @@
 function callNextMethod(methodInfo) {
     var args = Array.prototype.slice.call(arguments, 1);
     // call the next method or throw an error
-    // TODO:
+    var methods = methodInfo.methods[methodInfo.combination];
+    if (++methodInfo.index < methods.length) {
+        return methods[methodInfo.index].apply(methodInfo, args);
+    } else if (methodInfo.combination == 'around') {
+        methodInfo.combination = 'primary';
+        return methodInfo.primaryMethod.apply(methodInfo, args);
+    } else if (methodInfo.combination == 'primary') {
+        throw new Error(`No next method found for ${methodInfo.name} in ${methodInfo.combination}`);
+    }
 }
 
 function defgeneric(name) {
@@ -45,17 +53,18 @@ function defgeneric(name) {
         if (cache[key]) return cache[key];
 
         var around = filterByArgs(methods.around, args).sort(sortByMostSpecific).map((item) => item.fn);
-        if (around.length) {
-            return cache[key] = () => {
-                return around[0].apply(this, args);
-            };
-        }
-
         var before = filterByArgs(methods.before, args).sort(sortByMostSpecific).map((item) => item.fn);
         var primary = filterByArgs(methods.primary, args).sort(sortByMostSpecific).map((item) => item.fn);
         var after = filterByArgs(methods.after, args).sort(sortByLeastSpecific).map((item) => item.fn);
 
-        return cache[key] = () => {
+        var methodInfo = {
+            context: this,
+            name: name,
+            methods: {primary, around},
+            index: 0
+        };
+        methodInfo.primaryMethod = function() {
+            var args = Array.prototype.slice.call(arguments, 0);
             before.forEach((fn) => fn.apply(this, args));
 
             var result;
@@ -67,6 +76,17 @@ function defgeneric(name) {
             after.forEach((fn) => fn.apply(this, args));
             return result;
         };
+
+        if (around.length) {
+            methodInfo.combination = 'around';
+            return cache[key] = () => {
+                // FIXME: wired to use it as context
+                return around[0].apply(methodInfo, args);
+            };
+        } else {
+            methodInfo.combination = 'primary';
+            return cache[key] = methodInfo.primaryMethod.bind(methodInfo);
+        }
     };
 
     return generic;
