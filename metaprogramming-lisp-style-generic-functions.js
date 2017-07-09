@@ -49,13 +49,17 @@ function defgeneric(name) {
         // XXX: return the function that this generic would invoke
         // given the Arguments list at the time of invocation.
         var args = Array.prototype.slice.call(arguments, 0);
-        var key = getCacheKey(args);
+        var types = getTypes(args);
+        var key = types.join('-');
         if (cache[key]) return cache[key];
 
         var around = filterByArgs(methods.around, args).sort(sortByMostSpecific).map((item) => item.fn);
         var before = filterByArgs(methods.before, args).sort(sortByMostSpecific).map((item) => item.fn);
         var primary = filterByArgs(methods.primary, args).sort(sortByMostSpecific).map((item) => item.fn);
         var after = filterByArgs(methods.after, args).sort(sortByLeastSpecific).map((item) => item.fn);
+        if (!(around.length || before.length || primary.length || after.length)) {
+            throw new Error('No method found for append with args: ' + types.join(','));
+        }
 
         var methodInfo = {
             context: this,
@@ -115,7 +119,7 @@ function iterateeByRules(rules1, rules2) {
     return 0;
 }
 
-function getCacheKey(args) {
+function getTypes(args) {
     return args.map((a) => {
         if (a instanceof Object) {
             return a.constructor.name;
@@ -124,7 +128,7 @@ function getCacheKey(args) {
         } else {
             return typeof a;
         }
-    }).join('-');
+    });
 }
 function getMatchedRule(a, t) {
     if (a instanceof Object) {
