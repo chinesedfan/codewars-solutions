@@ -5,10 +5,14 @@ function callNextMethod(methodInfo) {
     if (++methodInfo.index < methods.length) {
         return methods[methodInfo.index].apply(methodInfo, args);
     } else if (methodInfo.combination == 'around') {
+        if (!methodInfo.methods.primary.length) {
+            // FIXME: not mentioned requirement
+            throw (`No next method found for ${methodInfo.name} in ${methodInfo.combination}`);
+        }
         methodInfo.combination = 'primary';
         return methodInfo.primaryMethod.apply(methodInfo, args);
     } else if (methodInfo.combination == 'primary') {
-        throw new Error(`No next method found for ${methodInfo.name} in ${methodInfo.combination}`);
+        throw (`No next method found for ${methodInfo.name} in ${methodInfo.combination}`);
     }
 }
 
@@ -58,7 +62,7 @@ function defgeneric(name) {
         var primary = filterByArgs(methods.primary, args).sort(sortByMostSpecific).map((item) => item.fn);
         var after = filterByArgs(methods.after, args).sort(sortByLeastSpecific).map((item) => item.fn);
         if (!(around.length || before.length || primary.length || after.length)) {
-            throw new Error('No method found for append with args: ' + types.join(','));
+            throw ('No method found for append with args: ' + types.join(','));
         }
 
         var methodInfo = {
