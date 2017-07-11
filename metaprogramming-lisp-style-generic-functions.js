@@ -73,6 +73,8 @@ function defgeneric(name) {
 
             var result;
             if (primary.length) {
+                methodInfo.combination = 'primary';
+                methodInfo.index = 0;
                 result = primary[0].apply(this, args);
             } else {
                 throw new Error('No around and primary methods');
@@ -82,13 +84,13 @@ function defgeneric(name) {
         };
 
         if (around.length) {
-            methodInfo.combination = 'around';
             return cache[key] = () => {
                 // FIXME: wired to use it as context
+                methodInfo.combination = 'around';
+                methodInfo.index = 0;
                 return around[0].apply(methodInfo, args);
             };
         } else {
-            methodInfo.combination = 'primary';
             return cache[key] = methodInfo.primaryMethod.bind(methodInfo);
         }
     };
