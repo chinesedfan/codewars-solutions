@@ -122,7 +122,7 @@ function iterateeByRules(rules1, rules2) {
 
         return rules1[i] - rules2[i];
     }
-    return 0;
+    return 1; // wired, if the same, swap
 }
 
 function getTypes(args) {
