@@ -4,11 +4,23 @@ function solvePuzzle(clues) {
 
     // group by seen
     const seenMap = dividedIntoGroups(ps);
-    // calculate mask then filter candidates by row
+    // init grid/mask
     const grid = new Array(n).fill(0).map(() => new Array(n).fill(0));
     const mask = fillGrid(grid, clues);
-    let candidatesList = new Array(n).fill(0).map((_, r) => getCandidatesForRow(r, clues, ps, seenMap));
-    candidatesList = pruneCandidatesList(candidatesList, grid, mask);
+    // filter candidates and update grid/mask
+    let rowCandidatesList = new Array(n).fill(0).map((_, r) => getCandidatesForRow(r, clues, ps, seenMap));
+    let colCandidatesList = new Array(n).fill(0).map((_, c) => getCandidatesForCol(c, clues, ps, seenMap));
+    let pruneResult;
+    pruneResult = pruneRowCandidatesList(rowCandidatesList, grid, mask);
+    rowCandidatesList = pruneResult.list;
+    while (1) {
+        pruneResult = pruneColCandidatesList(colCandidatesList, grid, mask);
+        colCandidatesList = pruneResult.list;
+        if (!pruneResult.updated) break;
+        pruneResult = pruneRowCandidatesList(rowCandidatesList, grid, mask);
+        rowCandidatesList = pruneResult.list;
+        if (!pruneResult.updated) break;
+    }
 
     let state = {
         mask: mask,
@@ -20,7 +32,7 @@ function solvePuzzle(clues) {
     const indexes = new Array(n).fill(-1); // index of each row in permutations
     let row = 0;
     while (1) {
-        if (findIndexForRow(row, indexes, clues, ps, candidatesList, state)) {
+        if (findIndexForRow(row, indexes, clues, ps, rowCandidatesList, state)) {
             row++;
             stateList[row] = cloneState(state);
             // solved
@@ -34,7 +46,7 @@ function solvePuzzle(clues) {
         }
     }
 
-    return indexes.map((i, r) => candidatesList[r][i]);
+    return indexes.map((i, r) => rowCandidatesList[r][i]);
 }
 
 function generatePermutations(n) {
@@ -90,7 +102,24 @@ function getCandidatesForRow(row, clues, ps, seenMap) {
 
     return candidates;
 }
-function filterCandidatesListByMask(candidatesList, mask) {
+function getCandidatesForCol(col, clues, ps, seenMap) {
+    const top = getTopClue(clues, col);
+    const bottom = getBottomClue(clues, col);
+
+    let candidates;
+    if (top && bottom) {
+        candidates = seenMap.total[top][bottom];
+    } else if (top) {
+        candidates = seenMap.left[top];
+    } else if (bottom) {
+        candidates = seenMap.right[bottom];
+    } else {
+        candidates = ps;
+    }
+
+    return candidates;
+}
+function filterRowCandidatesListByMask(candidatesList, mask) {
     return candidatesList.map((candidates, row) => {
         return candidates.filter((heights) => {
             return heights.every((h, column) => {
@@ -99,13 +128,14 @@ function filterCandidatesListByMask(candidatesList, mask) {
         });
     });
 }
-function pruneCandidatesList(candidatesList, grid, mask) {
+function pruneRowCandidatesList(candidatesList, grid, mask) {
+    const oldConfirmedCount = candidatesList.filter((candidates) => candidates.length == 1).length;
     const confirmed = [];
 
     while (1) {
-        candidatesList = filterCandidatesListByMask(candidatesList, mask);
+        candidatesList = filterRowCandidatesListByMask(candidatesList, mask);
 
-        const row = findUniqueIndex(candidatesList.length, (i) => !confirmed[i] && candidatesList[i].length == 1);
+        const row = findFirstIndex(candidatesList.length, (i) => !confirmed[i] && candidatesList[i].length == 1);
         if (row < 0) break;
 
         const heights = candidatesList[row][0];
@@ -116,7 +146,42 @@ function pruneCandidatesList(candidatesList, grid, mask) {
 
         confirmed[row] = true;
     }
-    return candidatesList;
+    return {
+        list: candidatesList,
+        updated: confirmed.length > oldConfirmedCount
+    };
+}
+function filterColCandidatesListByMask(candidatesList, mask) {
+    return candidatesList.map((candidates, column) => {
+        return candidates.filter((heights) => {
+            return heights.every((h, row) => {
+                return !(mask[row][column] & (1 << h - 1));
+            });
+        });
+    });
+}
+function pruneColCandidatesList(candidatesList, grid, mask) {
+    const oldConfirmedCount = candidatesList.filter((candidates) => candidates.length == 1).length;
+    const confirmed = [];
+
+    while (1) {
+        candidatesList = filterColCandidatesListByMask(candidatesList, mask);
+
+        const column = findFirstIndex(candidatesList.length, (i) => !confirmed[i] && candidatesList[i].length == 1);
+        if (column < 0) break;
+
+        const heights = candidatesList[column][0];
+        heights.forEach((h, row) => {
+            maskTheSameLine(mask, row, column, h);
+        });
+        pruneGridAndMask(grid, mask, mask.length);
+
+        confirmed[column] = true;
+    }
+    return {
+        list: candidatesList,
+        updated: confirmed.length > oldConfirmedCount
+    };
 }
 
 function findIndexForRow(row, indexes, /* info */ clues, ps, candidatesList, state) {
@@ -296,6 +361,12 @@ function findUniqueIndex(n, fn) {
         if (fn(i)) indexes.push(i);
     }
     return indexes.length == 1 ? indexes[0] : -1;
+}
+function findFirstIndex(n, fn) {
+    for (let i = 0; i < n; i++) {
+        if (fn(i)) return i;
+    }
+    return -1;
 }
 function maskTheSameLine(mask, i, j, x) {
     const n = mask.length;
