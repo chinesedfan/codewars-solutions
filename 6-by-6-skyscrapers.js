@@ -1,28 +1,48 @@
 function solvePuzzle(clues) {
     const n = clues.length / 4;
     const ps = generatePermutations(n);
-    const seenMap = dividedIntoGroups(ps);
 
+    // group by seen
+    const seenMap = dividedIntoGroups(ps);
+    // init grid/mask
     const grid = new Array(n).fill(0).map(() => new Array(n).fill(0));
-    // limit some possible values
     const mask = fillGrid(grid, clues);
+    // filter candidates and update grid/mask
+    const rowCandidatesList = new Array(n).fill(0).map((_, r) => getCandidatesForRow(r, clues, ps, seenMap));
+    const colCandidatesList = new Array(n).fill(0).map((_, c) => getCandidatesForCol(c, clues, ps, seenMap));
+    while (1) {
+        const updated = filterCandidatesListByMask(rowCandidatesList, colCandidatesList, grid, mask);
+        if (!updated) break;
+
+        updateMask(mask, rowCandidatesList, colCandidatesList);
+        pruneGridAndMask(grid, mask);
+    }
+
+    let state = {
+        mask: mask,
+        tops: new Array(n).fill(0),
+        maxs: new Array(n).fill(0)
+    };
+    const stateList = [cloneState(state)];
 
     const indexes = new Array(n).fill(-1); // index of each row in permutations
     let row = 0;
     while (1) {
-        if (findIndexForRow(clues, ps, indexes, row, seenMap, grid, mask)) {
+        if (findIndexForRow(row, indexes, clues, ps, rowCandidatesList, state)) {
             row++;
+            stateList[row] = cloneState(state);
             // solved
             if (row >= n) break;
         } else {
             indexes[row] = -1;
             row--;
+            state = cloneState(stateList[row]);
             // invalid
             if (row < 0) throw new Error('can not solve');
         }
     }
 
-    return indexes.map((i, r) => getCandidatesForRow(clues, ps, seenMap, r)[i]);
+    return indexes.map((i, r) => rowCandidatesList[r][i]);
 }
 
 function generatePermutations(n) {
@@ -61,7 +81,7 @@ function dividedIntoGroups(ps) {
         total: totalMap
     };
 }
-function getCandidatesForRow(clues, ps, seenMap, row) {
+function getCandidatesForRow(row, clues, ps, seenMap) {
     const left = getLeftClue(clues, row);
     const right = getRightClue(clues, row);
 
@@ -75,43 +95,130 @@ function getCandidatesForRow(clues, ps, seenMap, row) {
     } else {
         candidates = ps;
     }
+
     return candidates;
 }
+function getCandidatesForCol(col, clues, ps, seenMap) {
+    const top = getTopClue(clues, col);
+    const bottom = getBottomClue(clues, col);
 
-function findIndexForRow(clues, ps, indexes, row, /* preset info */ seenMap, grid, mask) {
-    const n = clues.length / 4;
-    // candidate indexes
-    const candidates = getCandidatesForRow(clues, ps, seenMap, row);
-    const column = grid[row].indexOf(n);
+    let candidates;
+    if (top && bottom) {
+        candidates = seenMap.total[top][bottom];
+    } else if (top) {
+        candidates = seenMap.left[top];
+    } else if (bottom) {
+        candidates = seenMap.right[bottom];
+    } else {
+        candidates = ps;
+    }
+
+    return candidates;
+}
+function filterCandidatesListByMask(rowCandidatesList, colCandidatesList, grid, mask) {
+    let updated = false;
+    rowCandidatesList.map((candidates, row) => {
+        const result = candidates.filter((heights) => {
+            return heights.every((h, column) => {
+                return !(mask[row][column] & (1 << h - 1));
+            });
+        });
+        if (result.length < candidates.length) updated = true;
+        if (result.length == 1) {
+            const heights = result[0];
+            heights.forEach((h, column) => {
+                grid[row][column] = h;
+                maskTheSameLine(mask, row, column, h);
+            });
+        }
+        rowCandidatesList[row] = result;
+    });
+    colCandidatesList.forEach((candidates, column) => {
+        const result = candidates.filter((heights) => {
+            return heights.every((h, row) => {
+                return !(mask[row][column] & (1 << h - 1));
+            });
+        });
+        if (result.length < candidates.length) updated = true;
+        if (result.length == 1) {
+            const heights = result[0];
+            heights.forEach((h, row) => {
+                grid[row][column] = h;
+                maskTheSameLine(mask, row, column, h);
+            });
+        }
+        colCandidatesList[column] = result;
+    });
+    return updated;
+}
+
+function updateMask(mask, rowCandidatesList, colCandidatesList) {
+    const n = mask.length;
+    const maskAll = Math.pow(2, n) - 1; // every bit is 1
+
+    const rowBits = new Array(n).fill(0).map(() => new Array(n).fill(0)); // 1 means possible
+    rowCandidatesList.forEach((candidates, row) => {
+        candidates.forEach((heights) => {
+            heights.forEach((h, column) => {
+                rowBits[row][column] |= 1 << h - 1;
+            });
+        });
+    });
+    const colBits = new Array(n).fill(0).map(() => new Array(n).fill(0)); // 1 means possible
+    colCandidatesList.forEach((candidates, column) => {
+        candidates.forEach((heights) => {
+            heights.forEach((h, row) => {
+                colBits[row][column] |= 1 << h - 1;
+            });
+        });
+    });
+
+    mask.forEach((row, r) => {
+        // key point, must be possiable in both
+        mask[r] = row.map((val, c) => maskAll & ~(rowBits[r][c] & colBits[r][c]));
+    });
+}
+
+function findIndexForRow(row, indexes, /* info */ clues, ps, candidatesList, state) {
+    const candidates = candidatesList[row];
 
     while (++indexes[row] < candidates.length) {
         const heights = candidates[indexes[row]];
-        if (column >= 0 && heights[column] != n) continue;
+        const otherState = cloneState(state);
+        const mask = otherState.mask;
+        const tops = otherState.tops;
+        const maxs = otherState.maxs;
         // check columns
-        const hasError = heights.some((h, i) => {
-            // conflict with the mask
-            if (mask[row][i] & (1 << h - 1)) return true;
+        const hasError = heights.some((h, column) => {
+            // check duplicated
+            if (mask[row][column] & (1 << h - 1)) return true;
+            maskTheSameLine(mask, row, column, h);
+            // check top
+            if (h > maxs[column]) {
+                maxs[column] = h;
+                tops[column]++;
 
-            const arr = [];
-            const map = {};
-            for (let j = 0; j <= row; j++) {
-                const x = j < row ? getCandidatesForRow(clues, ps, seenMap, j)[indexes[j]][i] : h;
-                if (map[x]) return true; // TODO: optimize to check duplicated
-
-                map[x] = 1;
-                arr.push(x);
+                const top = getTopClue(clues, column);
+                if (top && tops[column] > top) return true;
             }
-            // check from top and bottom
-            const top = getTopClue(clues, i);
-            if (top && seenFromLeft(arr) > top) return true;
+            // check bottom
             if (row == clues.length / 4 - 1) {
-                if (top && seenFromLeft(arr) != top) return true;
-                const bottom = getBottomClue(clues, i);
+                const bottom = getBottomClue(clues, column);
+                if (!bottom) return false;
+
+                const arr = [];
+                for (let j = 0; j <= row; j++) {
+                    const x = j < row ? candidatesList[j][indexes[j]][column] : h;
+                    arr.push(x);
+                }
                 if (bottom && bottom != seenFromRight(arr)) return true;
             }
         });
         if (hasError) continue;
 
+        state.mask = mask;
+        state.tops = tops;
+        state.maxs = maxs;
         return true;
     }
     return false;
@@ -142,7 +249,6 @@ function fillGrid(grid, clues) {
     const n = clues.length / 4;
     // bit x means it can not be x, and x = 1 ~ n
     const mask = new Array(n).fill(0).map(() => new Array(n).fill(0));
-    const maskAll = Math.pow(2, n) - 1; // every bit is 1
 
     let i, j, k;
     // check by row
@@ -151,7 +257,6 @@ function fillGrid(grid, clues) {
         const right = getRightClue(clues, i);
         for (j = 0; j < n; j++) {
             if ((left == 1 && !j) || (right == 1 && j == n - 1)) {
-                mask[i][j] = ~(1 << n - 1) & maskAll;
                 maskTheSameLine(mask, i, j, n);
                 continue;
             }
@@ -169,7 +274,6 @@ function fillGrid(grid, clues) {
         const bottom = getBottomClue(clues, j);
         for (i = 0; i < n; i++) {
             if ((top == 1 && !i) || (bottom == 1 && i == n - 1)) {
-                mask[i][j] = ~(1 << n - 1) & maskAll;
                 maskTheSameLine(mask, i, j, n);
                 continue;
             }
@@ -182,16 +286,26 @@ function fillGrid(grid, clues) {
     }
 
     // try to find unique possible
+    pruneGridAndMask(grid, mask, n);
+
+    return mask;
+}
+function cloneState(state) {
+    return {
+        mask: state.mask.map((row) => row.concat([])),
+        tops: state.tops.concat([]),
+        maxs: state.maxs.concat([])
+    };
+}
+
+function pruneGridAndMask(grid, mask, n) {
     while (1) {
         if (findUniqueBit(grid, mask, n)) continue;
         if (findUniqueCol(grid, mask, n)) continue;
         if (findUniqueRow(grid, mask, n)) continue;
         break;
     }
-
-    return mask;
 }
-
 function findUniqueBit(grid, mask, n) {
     let i, j, k;
     for (i = 0; i < n; i++) {
@@ -245,12 +359,14 @@ function findUniqueIndex(n, fn) {
 }
 function maskTheSameLine(mask, i, j, x) {
     const n = mask.length;
+    const maskAll = Math.pow(2, n) - 1; // every bit is 1
 
     let k;
     for (k = 0; k < n; k++) {
         if (k != j) mask[i][k] |= 1 << x - 1;
         if (k != i) mask[k][j] |= 1 << x - 1;
     }
+    mask[i][j] = ~(1 << x - 1) & maskAll;
 }
 
 function getLeftClue(clues, row) {
