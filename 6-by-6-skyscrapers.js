@@ -8,18 +8,14 @@ function solvePuzzle(clues) {
     const grid = new Array(n).fill(0).map(() => new Array(n).fill(0));
     const mask = fillGrid(grid, clues);
     // filter candidates and update grid/mask
-    let rowCandidatesList = new Array(n).fill(0).map((_, r) => getCandidatesForRow(r, clues, ps, seenMap));
-    let colCandidatesList = new Array(n).fill(0).map((_, c) => getCandidatesForCol(c, clues, ps, seenMap));
-    let pruneResult;
-    pruneResult = pruneRowCandidatesList(rowCandidatesList, grid, mask);
-    rowCandidatesList = pruneResult.list;
+    const rowCandidatesList = new Array(n).fill(0).map((_, r) => getCandidatesForRow(r, clues, ps, seenMap));
+    const colCandidatesList = new Array(n).fill(0).map((_, c) => getCandidatesForCol(c, clues, ps, seenMap));
     while (1) {
-        pruneResult = pruneColCandidatesList(colCandidatesList, grid, mask);
-        colCandidatesList = pruneResult.list;
-        if (!pruneResult.updated) break;
-        pruneResult = pruneRowCandidatesList(rowCandidatesList, grid, mask);
-        rowCandidatesList = pruneResult.list;
-        if (!pruneResult.updated) break;
+        const updated = filterCandidatesListByMask(rowCandidatesList, colCandidatesList, grid, mask);
+        if (!updated) break;
+
+        updateMask(mask, rowCandidatesList, colCandidatesList);
+        pruneGridAndMask(grid, mask);
     }
 
     let state = {
@@ -119,69 +115,68 @@ function getCandidatesForCol(col, clues, ps, seenMap) {
 
     return candidates;
 }
-function filterRowCandidatesListByMask(candidatesList, mask) {
-    return candidatesList.map((candidates, row) => {
-        return candidates.filter((heights) => {
+function filterCandidatesListByMask(rowCandidatesList, colCandidatesList, grid, mask) {
+    let updated = false;
+    rowCandidatesList.map((candidates, row) => {
+        const result = candidates.filter((heights) => {
             return heights.every((h, column) => {
                 return !(mask[row][column] & (1 << h - 1));
             });
         });
+        if (result.length < candidates.length) updated = true;
+        if (result.length == 1) {
+            const heights = result[0];
+            heights.forEach((h, column) => {
+                grid[row][column] = h;
+                maskTheSameLine(mask, row, column, h);
+            });
+        }
+        rowCandidatesList[row] = result;
     });
-}
-function pruneRowCandidatesList(candidatesList, grid, mask) {
-    const oldConfirmedCount = candidatesList.filter((candidates) => candidates.length == 1).length;
-    const confirmed = [];
-
-    while (1) {
-        candidatesList = filterRowCandidatesListByMask(candidatesList, mask);
-
-        const row = findFirstIndex(candidatesList.length, (i) => !confirmed[i] && candidatesList[i].length == 1);
-        if (row < 0) break;
-
-        const heights = candidatesList[row][0];
-        heights.forEach((h, column) => {
-            maskTheSameLine(mask, row, column, h);
-        });
-        pruneGridAndMask(grid, mask, mask.length);
-
-        confirmed[row] = true;
-    }
-    return {
-        list: candidatesList,
-        updated: confirmed.length > oldConfirmedCount
-    };
-}
-function filterColCandidatesListByMask(candidatesList, mask) {
-    return candidatesList.map((candidates, column) => {
-        return candidates.filter((heights) => {
+    colCandidatesList.forEach((candidates, column) => {
+        const result = candidates.filter((heights) => {
             return heights.every((h, row) => {
                 return !(mask[row][column] & (1 << h - 1));
             });
         });
+        if (result.length < candidates.length) updated = true;
+        if (result.length == 1) {
+            const heights = result[0];
+            heights.forEach((h, row) => {
+                grid[row][column] = h;
+                maskTheSameLine(mask, row, column, h);
+            });
+        }
+        colCandidatesList[column] = result;
     });
+    return updated;
 }
-function pruneColCandidatesList(candidatesList, grid, mask) {
-    const oldConfirmedCount = candidatesList.filter((candidates) => candidates.length == 1).length;
-    const confirmed = [];
 
-    while (1) {
-        candidatesList = filterColCandidatesListByMask(candidatesList, mask);
+function updateMask(mask, rowCandidatesList, colCandidatesList) {
+    const n = mask.length;
+    const maskAll = Math.pow(2, n) - 1; // every bit is 1
 
-        const column = findFirstIndex(candidatesList.length, (i) => !confirmed[i] && candidatesList[i].length == 1);
-        if (column < 0) break;
-
-        const heights = candidatesList[column][0];
-        heights.forEach((h, row) => {
-            maskTheSameLine(mask, row, column, h);
+    const rowBits = new Array(n).fill(0).map(() => new Array(n).fill(0)); // 1 means possible
+    rowCandidatesList.forEach((candidates, row) => {
+        candidates.forEach((heights) => {
+            heights.forEach((h, column) => {
+                rowBits[row][column] |= 1 << h - 1;
+            });
         });
-        pruneGridAndMask(grid, mask, mask.length);
+    });
+    const colBits = new Array(n).fill(0).map(() => new Array(n).fill(0)); // 1 means possible
+    colCandidatesList.forEach((candidates, column) => {
+        candidates.forEach((heights) => {
+            heights.forEach((h, row) => {
+                colBits[row][column] |= 1 << h - 1;
+            });
+        });
+    });
 
-        confirmed[column] = true;
-    }
-    return {
-        list: candidatesList,
-        updated: confirmed.length > oldConfirmedCount
-    };
+    mask.forEach((row, r) => {
+        // key point, must be possiable in both
+        mask[r] = row.map((val, c) => maskAll & ~(rowBits[r][c] & colBits[r][c]));
+    });
 }
 
 function findIndexForRow(row, indexes, /* info */ clues, ps, candidatesList, state) {
@@ -361,12 +356,6 @@ function findUniqueIndex(n, fn) {
         if (fn(i)) indexes.push(i);
     }
     return indexes.length == 1 ? indexes[0] : -1;
-}
-function findFirstIndex(n, fn) {
-    for (let i = 0; i < n; i++) {
-        if (fn(i)) return i;
-    }
-    return -1;
 }
 function maskTheSameLine(mask, i, j, x) {
     const n = mask.length;
