@@ -1,12 +1,12 @@
 function findPosition(num) {
-    var index = -1;
+    var indexes = [];
     for (var step = 1; step <= num.length; step++) {
         for (var start = 0; start < step; start++) {
-            index = tryToParse(num, start, step);
-            if (index >= 0) return index;
+            var index = tryToParse(num, start, step);
+            if (index >= 0) indexes.push(index);
         }
     }
-    return index;
+    return Math.min.apply(Math, indexes);
 }
 
 function tryToParse(num, start, step) {
