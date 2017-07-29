@@ -10,7 +10,19 @@ function findPosition(num) {
 }
 
 function tryToParse(num, start, step) {
-    var n = parseInt(num.substr(start, step));
+    var n;
+    if (start + step <= num.length) {
+        n = parseInt(num.substr(start, step));
+    } else {
+        var p1 = num.substr(start);
+        var p2 = num.substr(0, start);
+        var common = p1.length + p2.length - step;
+        if (common && p1.substr(p1.length - common) != p2.substr(0, common)) return -1;
+
+        n = parseInt(p1.substr(0, p1.length - common) + p2);
+        n++;
+    }
+
     var tokens = [];
     var len = 0;
 
