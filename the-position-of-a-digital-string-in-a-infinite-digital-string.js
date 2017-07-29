@@ -17,7 +17,14 @@ function tryToParse(num, start, step) {
         var p1 = num.substr(start);
         var p2 = num.substr(0, start);
         var common = p1.length + p2.length - step;
-        if (common && p1.substr(p1.length - common) != p2.substr(0, common)) return -1;
+        if (common) {
+            if (p1.substr(p1.length - common) != p2.substr(0, common)) return -1;
+        } else {
+            var chs = p2.split('');
+            if (chs.every((c) => c == '9')) {
+                p1 = parseInt(p1) - 1 + '';
+            }
+        }
 
         n = parseInt(p1.substr(0, p1.length - common) + p2);
         n++;
