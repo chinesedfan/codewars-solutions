@@ -6,6 +6,12 @@ function findPosition(num) {
             if (index >= 0) indexes.push(index);
         }
     }
+
+    if (!indexes.length) {
+        // special case, for all is zero
+        return getTotalLength(parseInt('1' + num)) + 1;
+    }
+
     return Math.min.apply(Math, indexes);
 }
 
