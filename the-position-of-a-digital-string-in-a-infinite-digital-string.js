@@ -20,20 +20,25 @@ function tryToParse(num, start, step) {
     if (start + step <= num.length) {
         n = parseInt(num.substr(start, step));
     } else {
+        // |----num----|
+        // |-p2-|--p1--|
         var p1 = num.substr(start);
         var p2 = num.substr(0, start);
         var common = p1.length + p2.length - step;
-        if (common) {
-            if (p1.substr(p1.length - common) != p2.substr(0, common)) return -1;
-        } else {
-            var chs = p2.split('');
-            if (chs.every((c) => c == '9')) {
-                p1 = parseInt(p1) - 1 + '';
-            }
-        }
 
-        n = parseInt(p1.substr(0, p1.length - common) + p2);
-        n++;
+        // |---step----|
+        // |-xx-|--p2--|, n - 1
+        // |--p1--|-xx-|, n
+        var chs = p2.substr(common).split('');
+        if (chs.every((c) => c == '9')) {
+            p1 = p1 + chs.map(() => '0').join('');
+            n = parseInt(p1);
+        } else {
+            p1 = p1 + p2.substr(common);
+            n = parseInt(p1);
+            n++;
+        }
+        if (String(n - 1).substr(step - p2.length) != p2) return -1;
     }
 
     var tokens = [];
