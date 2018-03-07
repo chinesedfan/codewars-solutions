@@ -18,12 +18,30 @@ def init(puzzle):
     global grid, stack, value, index, start, running, solved
 
     grid = puzzle
+    initCache()
+
     stack = []
     value = 1
     index = 0
     start = 0
     running = False
     solved = None
+
+def initCache():
+    # FIXME: pollute global to reuse functions
+    global value, index, cache
+
+    cache = [[0] * 9] * 9
+    for row in xrange(9):
+        for col in xrange(9):
+            if grid[row][col]:
+                continue
+
+            index = int(row / 3) * 3 + int(col / 3)
+            for x in xrange(1, 10):
+                value = x
+                if checkRow(row) and checkCol(col) and checkSubGrid():
+                    cache[row][col] |= 1 << x
 
 class Position(object):
     def __init__(self, row, col):
@@ -41,7 +59,9 @@ def getNext():
         v = grid[p.row][p.col]
         if v == value:
             return p, True
-        if v or not checkRow(p.row) or not checkCol(p.col) or not checkSubGrid():
+
+        valid = cache[p.row][p.col] | (1 << value)
+        if v or not (valid and checkRow(p.row) and checkCol(p.col) and checkSubGrid()):
             continue
 
         return p, False
