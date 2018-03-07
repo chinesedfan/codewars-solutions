@@ -1,9 +1,4 @@
-grid = []
-stack = []
-value = 1
-index = 0
-start = 0
-running = False
+import copy
 
 def sudoku_solver(puzzle):
     global running
@@ -17,10 +12,10 @@ def sudoku_solver(puzzle):
         else:
             doFail()
 
-    return grid
+    return solved
 
 def init(puzzle):
-    global grid, stack, value, index, start, running
+    global grid, stack, value, index, start, running, solved
 
     grid = puzzle
     stack = []
@@ -28,6 +23,7 @@ def init(puzzle):
     index = 0
     start = 0
     running = False
+    solved = None
 
 class Position(object):
     def __init__(self, row, col):
@@ -53,7 +49,16 @@ def getNext():
     return None, False
 
 def doSuccess(pos, fixed):
-    global value, index, start, running
+    global value, index, start, solved
+
+    if value == 9 and index == 8:
+        if solved:
+            raise Exception('multiply solutions')
+        else:
+            solved = copy.deepcopy(grid)
+            solved[pos.row][pos.col] = value
+            doFail()
+            return
 
     grid[pos.row][pos.col] = value
     stack.append([value, index, fixed, pos])
@@ -64,12 +69,16 @@ def doSuccess(pos, fixed):
         index = 0
 
         value += 1
-        if value > 9:
-            running = False
 
 def doFail():
+    global running
+
     if not len(stack):
-        raise Exception('unable to solve')
+        if solved:
+            running = False
+            return
+        else:
+            raise Exception('unable to solve')
 
     v, i, fixed, pos = stack.pop()
 
