@@ -8,6 +8,7 @@ namespace Sudoku {
     export interface Step {
         value: number;
         index: number;
+        fixed: boolean;
         pos: Position;
     }
 }
@@ -40,15 +41,15 @@ export default class Solver {
 
         this.running = true;
         while (this.running) {
-            const pos = this.next();
-            if (pos) {
-                this.success(pos);
+            const res = this.next();
+            if (res) {
+                this.success(res);
             } else {
                 this.fail();
             }
         }
     }
-    next(): Position {
+    next(): {pos: Position, fixed: boolean} {
         // try to place <value> into subgrid <index> from <start>
         const {row, col} = index2Position(this.index);
         for (let i = this.start; i < 9; i++) {
@@ -56,20 +57,25 @@ export default class Solver {
                 row: row + Math.floor(i / 3),
                 col: col + i % 3
             };
-            if (this.grid[p.row][p.col]) continue;
+            const value = this.grid[p.row][p.col];
+            if (value == this.value) return {pos: p, fixed: true};
+
+            if (value) continue;
             if (!this.checkRow(p.row)) continue;
             if (!this.checkCol(p.col)) continue;
             if (!this.checkSubGrid(p)) continue;
 
-            return p;
+            return {pos: p, fixed: false};
         }
         return null;
     }
-    success(pos: Position): void {
+    success(res: {pos: Position, fixed: boolean}): void {
+        const {pos, fixed} = res;
         this.grid[pos.row][pos.col] = this.value;
         this.stack.push({
             value: this.value,
             index: this.index,
+            fixed,
             pos
         });
 
@@ -88,11 +94,11 @@ export default class Solver {
     fail(): void {
         if (!this.stack.length) throw new Error('unsolvable');
 
-        let {value, index, pos} = this.stack.pop();
+        let {value, index, fixed, pos} = this.stack.pop();
         this.value = value;
         this.index = index;
-        this.start = indexOfSubGrid(pos, index);
-        this.grid[pos.row][pos.col] = 0;
+        this.start = indexOfSubGrid(pos, index) + 1;
+        if (!fixed) this.grid[pos.row][pos.col] = 0;
     }
 
     checkRow(row: number): boolean {
@@ -109,7 +115,7 @@ export default class Solver {
     }
     checkSubGrid(p: Position): boolean {
         const {row, col} = index2Position(this.index);
-        for (let i = this.start; i < 9; i++) {
+        for (let i = 0; i < 9; i++) {
             const p = {
                 row: row + Math.floor(i / 3),
                 col: col + i % 3
