@@ -31,17 +31,29 @@ def initCache():
     # FIXME: pollute global to reuse functions
     global value, index, cache
 
+    if len(grid) != 9:
+        raise Exception('invalid puzzle')
+
     cache = [[0] * 9] * 9
     for row in xrange(9):
+        if len(grid[row]) != 9:
+            raise Exception('invalid puzzle')
+
         for col in xrange(9):
-            if grid[row][col]:
-                continue
+            temp = grid[row][col]
+            if not (isinstance(temp, int) and temp >= 0 and temp <= 9):
+                raise Exception('invalid puzzle')
+            grid[row][col] = 0
 
             index = int(row / 3) * 3 + int(col / 3)
             for x in xrange(1, 10):
                 value = x
                 if checkRow(row) and checkCol(col) and checkSubGrid():
                     cache[row][col] |= 1 << x
+
+            if temp and not cache[row][col] & (1 << temp):
+                raise Exception('invalid puzzle')
+            grid[row][col] = temp # recover
 
 class Position(object):
     def __init__(self, row, col):
