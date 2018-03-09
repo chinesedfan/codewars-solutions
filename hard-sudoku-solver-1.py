@@ -35,7 +35,7 @@ def initCache():
     if len(grid) != 9:
         raise Exception('invalid puzzle')
 
-    cache = [[0] * 9] * 9
+    cache = map(lambda i: [0] * 9, xrange(9))
     queue = []
     for row in xrange(9):
         if len(grid[row]) != 9:
