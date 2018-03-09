@@ -6,9 +6,10 @@ def sudoku_solver(puzzle):
     init(puzzle)
     running = True
     while running:
-        p, fixed = getNext()
-        if p:
-            doSuccess(p, fixed)
+        p = queue[index]
+        res = getNext(p)
+        if res:
+            doSuccess(p)
         else:
             doFail()
 
@@ -20,21 +21,22 @@ def init(puzzle):
     grid = puzzle
     initCache()
 
-    stack = []
+    stack = [] # saved steps for reverting
     value = 1
-    index = 0
-    start = 0
+    index = 0  # place which cell now
+    start = 0  # start with which value
     running = False
     solved = None
 
 def initCache():
     # FIXME: pollute global to reuse functions
-    global value, index, cache
+    global queue, value, cache
 
     if len(grid) != 9:
         raise Exception('invalid puzzle')
 
     cache = [[0] * 9] * 9
+    queue = []
     for row in xrange(9):
         if len(grid[row]) != 9:
             raise Exception('invalid puzzle')
@@ -45,15 +47,30 @@ def initCache():
                 raise Exception('invalid puzzle')
             grid[row][col] = 0
 
-            index = int(row / 3) * 3 + int(col / 3)
+            p = Position(row, col)
             for x in xrange(1, 10):
                 value = x
-                if checkRow(row) and checkCol(col) and checkSubGrid():
+                if checkRow(row) and checkCol(col) and checkSubGrid(p):
                     cache[row][col] |= 1 << x
 
             if temp and not cache[row][col] & (1 << temp):
                 raise Exception('invalid puzzle')
             grid[row][col] = temp # recover
+
+            if not temp:
+                queue.append(p)
+
+    # the place order
+    queue = sorted(queue, lambda p1, p2: getCount(p1) - getCount(p2))
+
+def getCount(p):
+    mask = cache[p.row][p.col]
+    count = 0
+    for i in xrange(1, 10):
+        if mask & (1 << i):
+            count += 1
+
+    return count
 
 class Position(object):
     def __init__(self, row, col):
@@ -61,29 +78,27 @@ class Position(object):
         self.row = row
         self.col = col
 
-def getNext():
-    row, col = index2Position(index)
-    for i in xrange(start, 9):
-        p = Position(
-            row + int(i / 3),
-            col + i % 3
-        )
-        v = grid[p.row][p.col]
-        if v == value:
-            return p, True
+def getNext(p):
+    global value
 
-        valid = cache[p.row][p.col] | (1 << value)
-        if v or not (valid and checkRow(p.row) and checkCol(p.col) and checkSubGrid()):
+    for i in xrange(start, 10):
+        v = grid[p.row][p.col]
+        if v:
+            raise Exception('wrong order')
+
+        value = i
+        valid = cache[p.row][p.col] & (1 << value)
+        if not (valid and checkRow(p.row) and checkCol(p.col) and checkSubGrid(p)):
             continue
 
-        return p, False
+        return True
 
-    return None, False
+    return False
 
-def doSuccess(pos, fixed):
+def doSuccess(pos):
     global value, index, start, solved
 
-    if value == 9 and index == 8:
+    if index == len(queue) - 1:
         if solved:
             raise Exception('multiply solutions')
         else:
@@ -93,33 +108,26 @@ def doSuccess(pos, fixed):
             return
 
     grid[pos.row][pos.col] = value
-    stack.append([value, index, fixed, pos])
+    stack.append([pos, value])
 
     index += 1
     start = 0
-    if index == 9:
-        index = 0
-
-        value += 1
 
 def doFail():
-    global running
+    global running, index, start
 
-    if not len(stack):
+    if index == 0:
         if solved:
             running = False
             return
         else:
             raise Exception('unable to solve')
 
-    v, i, fixed, pos = stack.pop()
+    pos, v = stack.pop()
 
-    global value, index, start
-    value = v
-    index = i
-    start = indexOfSubGrid(pos, i) + 1
-    if not fixed:
-        grid[pos.row][pos.col] = 0
+    index -= 1
+    start = v + 1
+    grid[pos.row][pos.col] = 0
 
 def checkRow(row):
     for i in xrange(0, 9):
@@ -133,8 +141,9 @@ def checkCol(col):
             return False
     return True
 
-def checkSubGrid():
-    row, col = index2Position(index)
+def checkSubGrid(p):
+    row = p.row - (p.row % 3)
+    col = p.col - (p.col % 3)
     for i in xrange(0, 9):
         r = row + int(i / 3)
         c = col + i % 3
@@ -142,9 +151,3 @@ def checkSubGrid():
             return False
     return True
 
-def index2Position(i):
-    return int(i / 3) * 3, index % 3 * 3
-
-def indexOfSubGrid(pos, i):
-    row, col = index2Position(i)
-    return (pos.row - row) * 3 + pos.col - col
