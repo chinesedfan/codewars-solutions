@@ -61,16 +61,12 @@ def initCache():
                 queue.append(p)
 
     # the place order
-    queue = sorted(queue, lambda p1, p2: getCount(p1) - getCount(p2))
+    queue = sorted(queue, lambda p1, p2: getPriority(p1) - getPriority(p2))
 
-def getCount(p):
-    mask = cache[p.row][p.col]
-    count = 0
-    for i in xrange(1, 10):
-        if mask & (1 << i):
-            count += 1
-
-    return count
+def getPriority(p):
+    igrid = int(p.row / 3) * 3 + int(p.col / 3)
+    icell = indexOfSubGrid(p, igrid)
+    return igrid * 9 + icell
 
 class Position(object):
     def __init__(self, row, col):
@@ -151,3 +147,9 @@ def checkSubGrid(p):
             return False
     return True
 
+def index2Position(i):
+    return int(i / 3) * 3, i % 3 * 3
+
+def indexOfSubGrid(pos, i):
+    row, col = index2Position(i)
+    return (pos.row - row) * 3 + pos.col - col
