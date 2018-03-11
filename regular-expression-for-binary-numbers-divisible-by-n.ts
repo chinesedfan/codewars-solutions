@@ -12,7 +12,9 @@ interface State {
 
 const E = 'e'; // means empty str, not impossible(empty set)
 
-function generateReg(n: number): RegExp {
+function regexDivisibleBy(n: number): string {
+    if (n == 1) return '^(0|1)+$'; // special case
+
     const {states, arches} = initStatesAndArches(n);
     states.forEach((s, i) => {
         if (i == 0) return;
@@ -20,7 +22,7 @@ function generateReg(n: number): RegExp {
     });
     
     const R = arches[0][0];
-    return new RegExp(`^(${R})+$`);
+    return `^(${R})+$`;
 }
 
 function initStatesAndArches(n: number): {states: State[], arches: string[][]} {
