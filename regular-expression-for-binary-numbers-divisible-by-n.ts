@@ -22,7 +22,7 @@ function regexDivisibleBy(n: number): string {
     });
     
     const R = arches[0][0];
-    return `^(${R})+$`;
+    return `^(?:${R})+$`;
 }
 
 function initStatesAndArches(n: number): {states: State[], arches: string[][]} {
@@ -70,7 +70,7 @@ function reduceState(states: State[], arches: string[][], st: State): void {
             const S = arches[st.index][st.index];
 
             // Rkm | Qk(S)*Pm
-            const S_ = S ? `(${S})*` : E; 
+            const S_ = S ? (S.length > 1 ? `(?:${S})*` : `${S}*`) : E; 
             const str = addExp(Rkm, concatExp(Qk, S_, Pm));
             deleteArch(q, false, p.index);
             deleteArch(p, true, q.index);
@@ -95,5 +95,5 @@ function concatExp(...args) {
 }
 function cleverJoin(exps: string[], sep: string): string {
     if (exps.length == 1) return exps[0];
-    return exps.map((s) => s.indexOf('|') > 0 ? `(${s})` : s).join(sep);
+    return exps.map((s) => s.indexOf('|') > 0 ? `(?:${s})` : s).join(sep);
 }
