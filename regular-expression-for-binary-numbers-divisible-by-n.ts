@@ -20,7 +20,7 @@ function generateReg(n: number): RegExp {
     });
     
     const R = arches[0][0];
-    return new RegExp(`(${R})*`);
+    return new RegExp(`^(${R})+$`);
 }
 
 function initStatesAndArches(n: number): {states: State[], arches: string[][]} {
@@ -84,10 +84,14 @@ function reduceState(states: State[], arches: string[][], st: State): void {
 
 function addExp(...args) {
     const notEnotEmpty = args.filter((x) => x && x != E);
-    return notEnotEmpty.join('|');
+    return cleverJoin(notEnotEmpty, '|');
 }
 function concatExp(...args) {
     const notE = args.filter((x) => x != E);
     const hasEmptySet = args.some((x) => !x);
-    return hasEmptySet ? '' : notE.join('');
+    return hasEmptySet ? '' : cleverJoin(notE, '');
+}
+function cleverJoin(exps: string[], sep: string): string {
+    if (exps.length == 1) return exps[0];
+    return exps.map((s) => s.indexOf('|') > 0 ? `(${s})` : s).join(sep);
 }
