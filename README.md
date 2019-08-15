@@ -1,8 +1,10 @@
-### codewars-solutions
+# codewars-solutions
 
 So many online algorithms training platforms, so poor my skills is.
 
 Anyway, I jumped into a new pit!
+
+### Katas
 
 #### 6 By 6 Skyscrapers
 
