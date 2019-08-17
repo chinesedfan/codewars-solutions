@@ -6,7 +6,7 @@ Anyway, I jumped into a new pit!
 
 ### Katas
 
-#### 6 By 6 Skyscrapers
+#### [6 By 6 Skyscrapers](https://www.codewars.com/kata/6-by-6-skyscrapers)
 
 Backtracing with optimization. This solution can also pass the 7x7 kata.
 
@@ -19,47 +19,47 @@ Backtracing with optimization. This solution can also pass the 7x7 kata.
     1. Pick the next candidate and check
     1. If valid then move on (solved when it is the last row or unable to be solved if it is the first one)
 
-#### Check and Mate
+#### [Check and Mate](https://www.codewars.com/kata/check-and-mate)
 
 Simple.
 
-#### Decode the Morse code, for real
+#### [Decode the Morse code, for real](https://www.codewars.com/kata/decode-the-morse-code-for-real)
 
 Core algorithm is K-means. But how to choose the right initial centers? By coincidence, standard lengthes (1/3/7) solves this kata.
 
-#### Functional SQL
+#### [Functional SQL](https://www.codewars.com/kata/functional-sql)
 
 Simple. Cache operations and excute at last.
 
-#### Hard Sudoku Solver
+#### [Hard Sudoku Solver](https://www.codewars.com/kata/hard-sudoku-solver-1)
 
 (TODO)
 
-#### Metaprogramming: Lisp-style Generic Functions
+#### [Metaprogramming: Lisp-style Generic Functions](https://www.codewars.com/kata/metaprogramming-lisp-style-generic-functions)
 
 English is harder than the algorithm.
 
-#### Molecule to atoms
+#### [Molecule to atoms](https://www.codewars.com/kata/molecule-to-atoms)
 
 All parsing katas share similar steps to solve,
 
 1. Parse as different kinds of tokens first
 1. Then deal with tokens
 
-#### The maximum sum value of ranges -- Ultimate version
+#### [The maximum sum value of ranges -- Ultimate version](https://www.codewars.com/kata/the-maximum-sum-value-of-ranges-ultimate-version)
 
 (TODO) RMQ problem.
 
-#### Regular Expression for Binary Numbers Divisible by n
+#### [Regular Expression for Binary Numbers Divisible by n](https://www.codewars.com/kata/regular-expression-for-binary-numbers-divisible-by-n)
 
 FSM (Finite State Machine) to regular expression is really an interesting problem. There are 2 main kinds of ways: removing paths or states. I implemented the second one.
 
 Notice non-captured groups save so much performance.
 
-#### The builder of things
+#### [The builder of things](https://www.codewars.com/kata/the-builder-of-things)
 
 Learn `Proxy` usage.
 
-#### The position of a digital string in a infinite digital string
+#### [The position of a digital string in a infinite digital string](https://www.codewars.com/kata/the-position-of-a-digital-string-in-a-infinite-digital-string)
 
 (TODO) Forget details.
