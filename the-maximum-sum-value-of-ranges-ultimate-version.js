@@ -1,15 +1,46 @@
 function maxSum(arr, ranges) {
-    const r = createNode(arr, 0, arr.length - 1);
+    const sum = [];
+    arr.forEach((val, i) => {
+        if (i == 0) {
+            sum[i] = val;
+        } else {
+            sum[i] = sum[i - 1] + val;
+        }
+    });
+
+    const bs = [...new Set(
+        ranges.map(([b, e, v]) => b)
+    )].sort((a, b) => a - b);
+    const bvs = bs.map(() => 0);
+    const r = createNode(bvs, 0, bs.length - 1);
 
     let m = -Infinity;
-    ranges.forEach(([beg, end, val]) => {
-        updateNode(r, beg, val);
-        m = Math.max(m, findSum(r, beg, end));
+    ranges.forEach(([b, e, v]) => {
+        const ib = binarySearch(bs, 0, bs.length - 1, (x) => bs[x] < b) + 1;
+        const ie = binarySearch(bs, 0, bs.length - 1, (x) => bs[x] <= e);
+
+        updateNode(r, ib, v - arr[bs[ib]]);
+
+        let s = sum[e] - (sum[b - 1] || 0);
+        s += findSum(r, ib, ie);
+
+        m = Math.max(m, s);
     });
 
     return m;
 }
 
+function binarySearch(arr, beg, end, fn) {
+    while (beg <= end) {
+        const mid = Math.ceil((beg + end) / 2);
+        if (fn(mid)) {
+            beg = mid + 1;
+        } else {
+            end = mid - 1;
+        }
+    }
+    return end;
+}
 function createNode(arr, left, right) {
     const node = {left, right, sum: arr[left]};
     if (left === right) return node;
