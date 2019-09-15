@@ -8,10 +8,13 @@ function maxSum(arr, ranges) {
         }
     });
 
-    const bs = [...new Set(
-        ranges.map(([b, e, v]) => b)
-    )].sort((a, b) => a - b);
-    const bvs = bs.map(() => 0);
+    const map = {};
+    ranges.forEach(([b, e, v]) => map[b] = 1);
+
+    const bs = Object.keys(map)
+        .map(x => +x)
+        .sort((a, b) => a - b);
+    const bvs = Array(bs.length).fill(0);
     const r = createNode(bvs, 0, bs.length - 1);
 
     let m = -Infinity;
