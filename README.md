@@ -48,7 +48,10 @@ All parsing katas share similar steps to solve,
 
 #### [The maximum sum value of ranges -- Ultimate version](https://www.codewars.com/kata/the-maximum-sum-value-of-ranges-ultimate-version)
 
-(TODO) RMQ problem.
+RMQ problem. But need to optimize very carefully.
+
+- Only build the tree among changed elements, which reduces from O(NLogN) to O(N + RLogR)
+- Different versions of Node.js behave a bit differently
 
 #### [Regular Expression for Binary Numbers Divisible by n](https://www.codewars.com/kata/regular-expression-for-binary-numbers-divisible-by-n)
 
