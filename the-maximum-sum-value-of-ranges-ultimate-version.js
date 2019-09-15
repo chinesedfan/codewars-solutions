@@ -32,7 +32,7 @@ function maxSum(arr, ranges) {
 
 function binarySearch(arr, beg, end, fn) {
     while (beg <= end) {
-        const mid = Math.ceil((beg + end) / 2);
+        const mid = Math.floor((beg + end) / 2);
         if (fn(mid)) {
             beg = mid + 1;
         } else {
@@ -66,7 +66,7 @@ function updateNode(node, idx, val) {
     node.sum = node.leftChild.sum + node.rightChild.sum;
 }
 function findSum(r, beg, end) {
-    if (r.left === r.right) return r.sum;
+    if (r.left === beg && r.right === end) return r.sum;
 
     const mid = Math.ceil((r.left + r.right) / 2);
     if (beg >= mid) {
