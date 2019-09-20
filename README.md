@@ -65,4 +65,4 @@ Learn `Proxy` usage.
 
 #### [The position of a digital string in a infinite digital string](https://www.codewars.com/kata/the-position-of-a-digital-string-in-a-infinite-digital-string)
 
-(TODO) Forget details.
+Loop to find the step and start position of the target, which will match a number in the infinite string. Note special cases that the whole target only contains zeros need to append a 1 to get the real target.
