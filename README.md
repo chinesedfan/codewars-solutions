@@ -35,6 +35,10 @@ Simple. Cache operations and excute at last.
 
 (TODO)
 
+#### [Insane Coloured Triangles](https://www.codewars.com/kata/5a331ea7ee1aae8f24000175)
+
+Discover that if length = 4, the result will only depend on the first and last value.
+
 #### [Metaprogramming: Lisp-style Generic Functions](https://www.codewars.com/kata/metaprogramming-lisp-style-generic-functions)
 
 English is harder than the algorithm.
