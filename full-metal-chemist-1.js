@@ -47,7 +47,7 @@ class Atom {
     var bondedStr = sorted.map(at => {
       return at.element === 'H' ? at.element : at.element + at.id
     }).join(',')
-    return `Atom(${this.element}.${this.id}: ${bondedStr})`
+    return bondedStr ? `Atom(${this.element}.${this.id}: ${bondedStr})` : `Atom(${this.element}.${this.id})`
   }
 }
 
@@ -88,6 +88,16 @@ class Molecule {
 
     this.locked = false
     this.lockedLength = -1
+
+    const spies = []
+    // const spies = ['brancher', 'bounder', 'mutate', 'add', 'addChaining', 'closer', 'unlock']
+    spies.forEach(method => {
+      var fn = this[method]
+      this[method] = (...args) => {
+        console.log(method, args)
+        return fn.apply(this, args)
+      }
+    })
   }
   brancher(...branches) {
     if (this.locked) throw new LockedMolecule
@@ -123,11 +133,12 @@ class Molecule {
   }
   add(...ms) {
     if (this.locked) throw new LockedMolecule
-    
+
     ms.forEach(([nc, nb, elt]) => {
       nb--; nc--;
       try {
-        this.branches[nb][nc].bond(this.newAt(elt))
+        var at = this.newAt(elt)
+        this.branches[nb][nc].bond(at)
       } catch (e) {
         this.atoms.pop()
         throw e
@@ -171,27 +182,41 @@ class Molecule {
   }
   unlock() {
     this.locked = false
-    this.branches = this.branches
-      .map(b => b.filter(at => at.element !== 'H'))
-      .filter(b => b.length)
-    if (!this.branches.length) throw new EmptyMolecule
 
     var visited = {}
-    var add = (at) => {
-      if (!visited[at.id]) {
+    var isNotH = (at) => at.element !== 'H'
+    var addIfOK = (at) => {
+      if (isNotH(at) && !visited[at.id]) {
         visited[at.id] = 1
         this.atoms.push(at)
       }
     }
 
     this.atoms = []
-    this.branches.forEach(b => {
+    this.branches.forEach((b, i) => {
+      // keep the bonded atoms, not matter the carbon itself is kept or not
       b.forEach(c => {
-        add(c)
-        c.bonded = c.bonded.filter(at => at.element !== 'H')
-        c.bonded.forEach(at => add(at))
+        addIfOK(c)
+        c.bonded = c.bonded.filter(isNotH)
+        // bfs
+        c.bonded.forEach(r => {
+          var q = [r]
+          while (q.length) {
+            var at = q.shift()
+            addIfOK(at)
+
+            at.bonded = at.bonded.filter(isNotH)
+            at.bonded.forEach(at2 => {
+              if (isNotH(at2) && !visited[at2.id]) q.push(at2)
+            })
+          }
+        })
       })
+      this.branches[i] = b.filter(isNotH)
     })
+    this.branches = this.branches
+      .filter(b => b.length)
+    if (!this.branches.length) throw new EmptyMolecule
 
     this.atoms
       .sort((a, b) => a.id - b.id)
@@ -203,5 +228,9 @@ class Molecule {
     var at = new Atom(elt, this.atoms.length + 1)
     this.atoms.push(at)
     return at
+  }
+  print() {
+    console.log(this.atoms.map(at => at.toString()).join(', '))
+    return this
   }
 }

@@ -31,6 +31,10 @@ Core algorithm is K-means. But how to choose the right initial centers? By coinc
 
 Simple. Cache operations and excute at last.
 
+#### [Full Metal Chemist #1: build me](https://www.codewars.com/kata/5a27ca7ab6cfd70f9300007a)
+
+Long description. Easy in fact.
+
 #### [Hard Sudoku Solver](https://www.codewars.com/kata/hard-sudoku-solver-1)
 
 (TODO)
