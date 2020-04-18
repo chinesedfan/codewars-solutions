@@ -126,7 +126,12 @@ class Molecule {
     
     ms.forEach(([nc, nb, elt]) => {
       nb--; nc--;
-      this.branches[nb][nc].bond(this.newAt(elt))
+      try {
+        this.branches[nb][nc].bond(this.newAt(elt))
+      } catch (e) {
+        this.atoms.pop()
+        throw e
+      }
     })
     return this
   }
@@ -147,6 +152,7 @@ class Molecule {
     } catch (e) {
       c.bonded = c.bonded.slice(0, bonded)
       this.atoms = this.atoms.slice(0, lockedLength)
+      throw e
     }
     return this
   }
@@ -154,7 +160,6 @@ class Molecule {
     if (this.locked) throw new LockedMolecule
   
     this.locked = true
-    this.lockedLength = this.atoms.length
 
     this.atoms.forEach(at => {
       var val = atomInfo[at.element][0]
@@ -166,20 +171,31 @@ class Molecule {
   }
   unlock() {
     this.locked = false
-
-    this.atoms = this.atoms.slice(0, this.lockedLength)
-    this.atoms = this.atoms.filter(at => {
-      at.bonded = at.bonded.filter(at => at.element !== 'H')
-      return at.bonded.length
-    })
-
     this.branches = this.branches
       .map(b => b.filter(at => at.element !== 'H'))
       .filter(b => b.length)
     if (!this.branches.length) throw new EmptyMolecule
 
-    this.atoms = this.atoms.filter(at => at.element !== 'H')
-    this.atoms.forEach((at, i) => at.id = i + 1)
+    var visited = {}
+    var add = (at) => {
+      if (!visited[at.id]) {
+        visited[at.id] = 1
+        this.atoms.push(at)
+      }
+    }
+
+    this.atoms = []
+    this.branches.forEach(b => {
+      b.forEach(c => {
+        add(c)
+        c.bonded = c.bonded.filter(at => at.element !== 'H')
+        c.bonded.forEach(at => add(at))
+      })
+    })
+
+    this.atoms
+      .sort((a, b) => a.id - b.id)
+      .forEach((at, i) => at.id = i + 1)
     return this
   }
 
