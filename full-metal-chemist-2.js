@@ -25,8 +25,10 @@ function buildRegExps() {
     const subparts = '\\[.+\\]'
     const ramification = join(
         positions, '-', withFlag(multipler, '?'), withFlag(subparts, '?'),
-        cycloRadical,
-        or('yl', prefixes),
+        or(
+            join(cycloRadical, 'yl'),
+            prefixes,
+        ),
     )
     const ramifications = join(ramification, withFlag(join('-', ramification), '*'))
 
@@ -73,6 +75,7 @@ const tests = [
     '3-[1-hydroxy]methylpentan-1,4-diol',
     '4-[1-oxo]ethylheptan-2,6-dione',
     'pent-3-enamide',
+    '1-amino-6-[diethyl]arsinohexan-3-ol',
     'cyclobutandiol',
 ]
 tests.forEach(str => {
