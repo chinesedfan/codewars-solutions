@@ -32,7 +32,7 @@ function buildRegExps() {
 
     // tridec-4,10-dien-2,6,8-triyne
     const eneRepeatedPart = join('-', positions, '-', withFlag(multipler, '?'), or('en', 'yn'))
-    const alkenesOrAlkynes = join(withFlag(eneRepeatedPart, '+'), 'e')
+    const alkenesOrAlkynes = join(withFlag(eneRepeatedPart, '+'), or('e', suffixes))
 
     // 3-[1-hydroxy]methylpentan-1,4-diol
     const functionSuffixes = join('an', withFlag(join('-', positions, '-'), '?'), withFlag(multipler, '?'), suffixes)
@@ -72,6 +72,7 @@ const tests = [
     'tridec-4,10-dien-2,6,8-triyne',
     '3-[1-hydroxy]methylpentan-1,4-diol',
     '4-[1-oxo]ethylheptan-2,6-dione',
+    'pent-3-enamide',
     'cyclobutandiol',
 ]
 tests.forEach(str => {
