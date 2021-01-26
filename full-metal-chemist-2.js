@@ -31,17 +31,17 @@ function buildRegExps() {
     const ramifications = join(ramification, withFlag(join('-', ramification), '*'))
 
     // tridec-4,10-dien-2,6,8-triyne
-    const eneRepeatedPart = join('-', positions, withFlag(multipler, '?'), or('en', 'yn'))
+    const eneRepeatedPart = join('-', positions, '-', withFlag(multipler, '?'), or('en', 'yn'))
     const alkenesOrAlkynes = join(withFlag(eneRepeatedPart, '+'), 'e')
 
     // 3-[1-hydroxy]methylpentan-1,4-diol
-    const functionSuffixes = join('an-', positions, withFlag(multipler, '?'), suffixes)
+    const functionSuffixes = join('an-', positions, '-', withFlag(multipler, '?'), suffixes)
 
-    const before = or(multipler, ramifications)
+    const before = withFlag(or(multipler, ramifications), '?')
     const after = or('ane', alkenesOrAlkynes, functionSuffixes)
 
     const str = join(before, cycloRadical, after)
-    return new RegExp(str)
+    return new RegExp(`^${str}$`)
 }
 
 function join(...parts) {
@@ -54,18 +54,21 @@ function or(...parts) {
         .map(p => withGroup(p))
         .join('|')
 }
-function withGroup(str, capture = true) {
-    if (/^[a-z\-]+$/.test(str) || str[0] === '(') return str
+function withGroup(str, opts = {}) {
+    const { force, capture = true } = opts
+    if (!force && /^[a-z-]+$/.test(str)) return str
 
     return capture ? `(${str})` : `(?:${str})`
 }
 function withFlag(str, flag) {
-    return withGroup(str) + flag
+    return withGroup(str, { force: true }) + flag
 }
 
 const reg = buildRegExps()
 console.log(reg)
 const tests = [
+    'methane',
+    '3-ethyl-2,5-dimethylhexane',
     'tridec-4,10-dien-2,6,8-triyne',
     '3-[1-hydroxy]methylpentan-1,4-diol',
 ]
