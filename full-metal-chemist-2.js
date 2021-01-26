@@ -34,15 +34,19 @@ function buildRegExps() {
 
     // tridec-4,10-dien-2,6,8-triyne
     const eneRepeatedPart = join('-', positions, '-', withFlag(multipler, '?'), or('en', 'yn'))
-    const alkenesOrAlkynes = join(withFlag(eneRepeatedPart, '+'), or('e', suffixes))
+    const alkenesOrAlkynes = withFlag(eneRepeatedPart, '+')
 
     // 3-[1-hydroxy]methylpentan-1,4-diol
-    const functionSuffixes = join('an', withFlag(join('-', positions, '-'), '?'), withFlag(multipler, '?'), suffixes)
+    const functionSuffixes = join(withFlag(join('-', positions, '-'), '?'), withFlag(multipler, '?'), suffixes)
 
     const before = withFlag(or(multipler, ramifications), '?')
-    const after = or('ane', alkenesOrAlkynes, functionSuffixes)
+    const after = or('an', alkenesOrAlkynes)
+    const end = or('e', functionSuffixes)
 
-    const str = join(before, cycloRadical, after)
+    const str = or(
+        join(before, cycloRadical, after, end),
+        join(before, cycloRadical, alkenesOrAlkynes, 'yl', 'ether'),
+    )
     return new RegExp(`^${str}$`)
 }
 
@@ -75,10 +79,12 @@ const tests = [
     '3-[1-hydroxy]methylpentan-1,4-diol',
     '4-[1-oxo]ethylheptan-2,6-dione',
     'pent-3-enamide',
+    'methan-1-phosphine',
     '1-amino-6-[diethyl]arsinohexan-3-ol',
+    'methylprop-1-enylether',
     'cyclobutandiol',
 ]
 tests.forEach(str => {
     const matches = reg.exec(str)
-    console.log(matches)
+    console.log(!!matches)
 })
