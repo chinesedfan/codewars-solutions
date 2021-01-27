@@ -45,14 +45,19 @@ function buildRegExps() {
     const end = or('e', functionSuffixes)
 
     const str = or(
-        join(before, cycloRadical, after, end),
-        join(alk, 'yl', 'ether'),
-        join(alk, 'yl ', alk, 'anoate'),
-        join(ramifications, 'benzene')
+        joinCaptured(before, cycloRadical, after, end),
+        joinCaptured(alk, 'yl', 'ether'),
+        joinCaptured(alk, 'yl ', alk, 'anoate'),
+        joinCaptured(ramifications, 'benzene')
     )
     return new RegExp(`^${str}$`)
 }
 
+function joinCaptured(...parts) {
+    return parts
+        .map(p => withGroup(p, { capture: true }))
+        .join('')
+}
 function join(...parts) {
     return parts
         .map(p => withGroup(p))
@@ -64,7 +69,7 @@ function or(...parts) {
         .join('|')
 }
 function withGroup(str, opts = {}) {
-    const { force, capture = true } = opts
+    const { force, capture = false } = opts
     if (!force && /^[a-z-]+$/.test(str)) return str
 
     return capture ? `(${str})` : `(?:${str})`
@@ -91,5 +96,5 @@ const tests = [
 ]
 tests.forEach(str => {
     const matches = reg.exec(str)
-    console.log(!!matches)
+    console.log(matches)
 })
