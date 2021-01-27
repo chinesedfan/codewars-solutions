@@ -18,7 +18,12 @@ function buildRegExps() {
     const multipler = MULTIPLIERS.join('|')
     const positions = join('\\d+', withFlag(',\\d+', '*'))
 
-    const prefixes = PREFIXES.join('|')
+    // tridec-4,10-dien-2,6,8-triyne
+    const eneRepeatedPart = join('-', positions, '-', withFlag(multipler, '?'), or('en', 'yn'))
+    const alkenesOrAlkynes = withFlag(eneRepeatedPart, '+')
+
+    const alk = join(cycloRadical, withFlag(eneRepeatedPart, '*'))
+    const prefixes = or(join(alk, 'oxy'), ...PREFIXES)
     const suffixes = SUFFIXES.join('|')
 
     // FIXME: bad match when both prefix and suffix contain subparts
@@ -32,10 +37,6 @@ function buildRegExps() {
     )
     const ramifications = join(ramification, withFlag(join('-', ramification), '*'))
 
-    // tridec-4,10-dien-2,6,8-triyne
-    const eneRepeatedPart = join('-', positions, '-', withFlag(multipler, '?'), or('en', 'yn'))
-    const alkenesOrAlkynes = withFlag(eneRepeatedPart, '+')
-
     // 3-[1-hydroxy]methylpentan-1,4-diol
     const functionSuffixes = join(withFlag(join('-', positions, '-'), '?'), withFlag(multipler, '?'), suffixes)
 
@@ -45,7 +46,9 @@ function buildRegExps() {
 
     const str = or(
         join(before, cycloRadical, after, end),
-        join(before, cycloRadical, alkenesOrAlkynes, 'yl', 'ether'),
+        join(alk, 'yl', 'ether'),
+        join(alk, 'yl ', alk, 'anoate'),
+        join(ramifications, 'benzene')
     )
     return new RegExp(`^${str}$`)
 }
@@ -82,6 +85,8 @@ const tests = [
     'methan-1-phosphine',
     '1-amino-6-[diethyl]arsinohexan-3-ol',
     'methylprop-1-enylether',
+    '3-prop-2-enoxypropan-1-ol',
+    '2-ethyl-1-formylbenzene',
     'cyclobutandiol',
 ]
 tests.forEach(str => {
