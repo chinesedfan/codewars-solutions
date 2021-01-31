@@ -19,18 +19,10 @@ function parse(name) {
         ramifications
     ] = reg.exec(name)
     if (cycloRadical) {
-        const branch = 1
-        const { isCyclo, radical } = parseRadical(cycloRadical)
+        handleAlk(molecule, cycloRadical, after)
 
-        molecule.brancher(radical)
-        if (isCyclo) {
-            molecule.bounder([1, branch, radical, branch])
-        }
-
-        if (after === 'an') {
-            // ignore
-        } else {
-            parseEnOrYn(after).forEach(c => molecule.bounder([c, branch, c + 1, branch]))
+        if (before) {
+            handleRamifications(molecule, before)
         }
     } else if (alk1) {
 
@@ -44,6 +36,61 @@ function parse(name) {
         obj[atom.element] = (obj[atom.element] || 0) + 1
         return obj
     }, {})
+}
+
+function handleRamifications(molecule, str) {
+    // handle subs
+    const tokens = []
+    const stack = []
+    const others = []
+    for (let i = 0; i < str.length; i++) {
+        const ch = str[i]
+        if (ch === '[') {
+            stack.push(i)
+            others.length = 0 // throw away `multipler` chs
+        } else if (ch === ']') {
+            const sub = str.slice(stack.pop() + 1, i)
+            tokens.push(sub)
+        } else if (ch === '-' && !stack.length) {
+            tokens.push(others.join(''))
+            others.length = 0
+        }
+
+        if (!stack.length && ch !== '-') {
+            others.push(ch)
+        }
+    }
+    if (others.length) {
+        tokens.push(others.join(''))
+    }
+
+    // 1,3,5-tri
+    if (tokens.length & 1) throw new Error('bad ramifications: ' + str)
+
+    for (let i = 0; i < tokens.length; i += 2) {
+        const positions = tokens[i].split(',').map(Number)
+        const isAlk = /yl$/.test(tokens[i + 1])
+        if (isAlk) {
+            // TODO:            
+        } else {
+            // prefixes
+        }
+    }
+}
+function handleAlk(molecule, cycloRadical, after) {
+    const { isCyclo, radical } = parseRadical(cycloRadical)
+
+    molecule.brancher(radical)
+    const branch = molecule.branches.length
+    if (isCyclo) {
+        molecule.bounder([1, branch, radical, branch])
+    }
+
+    if (after === 'an') {
+        // ignore
+    } else {
+        parseEnOrYn(after).forEach(c => molecule.bounder([c, branch, c + 1, branch]))
+    }
 }
 
 function parseRadical(str) {
@@ -66,7 +113,7 @@ function parseEnOrYn(str) {
     const bonders = [] // start positions
     for (let i = 0; i < tokens.length; i += 2) {
         const positions = tokens[i].split(',').map(Number)
-        const isYn = /^yn/.test(tokens[i + 1])
+        const isYn = /yn$/.test(tokens[i + 1])
         bonders.push(...positions)
 
         if (isYn) {
@@ -105,7 +152,7 @@ function buildRegExps() {
     // 3-[1-hydroxy]methylpentan-1,4-diol
     const functionSuffixes = join(withFlag(join('-', positions, '-'), '?'), withFlag(multipler, '?'), suffixes)
 
-    const before = withFlag(or(multipler, ramifications), '?')
+    const before = withFlag(ramifications, '?')
     const after = or('an', alkenesOrAlkynes)
     const end = or('e', functionSuffixes)
 
@@ -143,10 +190,10 @@ function withFlag(str, flag) {
     return withGroup(str, { force: true }) + flag
 }
 
-const reg = buildRegExps()
-console.log(reg)
 const tests = [
-    'methane',
+    'methane', // c1h4
+    'hex-1,4-diene', // c6h10
+    'hex-2-yne', // c6h10
     '3-ethyl-2,5-dimethylhexane',
     'tridec-4,10-dien-2,6,8-triyne',
     '3-[1-hydroxy]methylpentan-1,4-diol',
@@ -160,6 +207,5 @@ const tests = [
     'cyclobutandiol',
 ]
 tests.forEach(str => {
-    const matches = reg.exec(str)
-    console.log(matches)
+    console.log(parse(str))
 })
