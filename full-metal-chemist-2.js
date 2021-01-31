@@ -19,11 +19,18 @@ function parse(name) {
         ramifications
     ] = reg.exec(name)
     if (cycloRadical) {
+        const branch = 1
         const { isCyclo, radical } = parseRadical(cycloRadical)
 
         molecule.brancher(radical)
         if (isCyclo) {
-            molecule.bounder([1, 1, radical, 1])
+            molecule.bounder([1, branch, radical, branch])
+        }
+
+        if (after === 'an') {
+            // ignore
+        } else {
+            parseEnOrYn(after).forEach(c => molecule.bounder([c, branch, c + 1, branch]))
         }
     } else if (alk1) {
 
@@ -50,6 +57,23 @@ function parseRadical(str) {
 }
 function parseMultipler(str) {
     return MULTIPLIERS.indexOf(str) + 2
+}
+function parseEnOrYn(str) {
+    // tridec-4,10-dien-2,6,8-triyn
+    const tokens = str.split('-').filter(Boolean)
+    if (tokens.length & 1) throw new Error('bad en or yn: ' + str)
+
+    const bonders = [] // start positions
+    for (let i = 0; i < tokens.length; i += 2) {
+        const positions = tokens[i].split(',').map(Number)
+        const isYn = /^yn/.test(tokens[i + 1])
+        bonders.push(...positions)
+
+        if (isYn) {
+            bonders.push(...positions)
+        }
+    }
+    return bonders
 }
 
 function buildRegExps() {
