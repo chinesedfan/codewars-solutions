@@ -9,6 +9,47 @@ const PREFIXES    = ['cyclo', 'hydroxy',       'oxo',             'carboxy',    
 
 function parse(name) {
     // Parse the name given as argument in the constructor and output the dict representing the raw formula
+    const molecule = new Molecule(name)
+    const reg = buildRegExps()
+    const [
+        _,
+        before, cycloRadical, after, end,
+        alk1, alk2,
+        alk3, alk4,
+        ramifications
+    ] = reg.exec(name)
+    if (cycloRadical) {
+        const { isCyclo, radical } = parseRadical(cycloRadical)
+
+        molecule.brancher(radical)
+        if (isCyclo) {
+            molecule.bounder([1, 1, radical, 1])
+        }
+    } else if (alk1) {
+
+    } else if (alk3) {
+
+    } else if (ramifications) {
+
+    }
+    molecule.closer()
+    return molecule.atoms.reduce((obj, atom) => {
+        obj[atom.element] = (obj[atom.element] || 0) + 1
+        return obj
+    }, {})
+}
+
+function parseRadical(str) {
+    let isCyclo = false
+    if (str.indexOf('cyclo') === 0) {
+        isCyclo = true
+        str = str.slice(5)
+    }
+    const radical = RADICALS.indexOf(str) + 1
+    return { isCyclo, radical }
+}
+function parseMultipler(str) {
+    return MULTIPLIERS.indexOf(str) + 2
 }
 
 function buildRegExps() {
