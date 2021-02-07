@@ -48,7 +48,7 @@ function parse(name) {
         // ether, R1-O-R2
         const b1 = handleAlk(molecule, alk1.slice(0, -2)) // omit 'yl'
         const b2 = handleAlk(molecule, alk2.slice(0, -2)) // omit 'yl'
-        const b3 = molecule.brancher(1)
+        const b3 = createBranch(molecule, 1)
         molecule.mutate([1, b3, 'O'])
         molecule.bounder([1, b1, 1, b3], [1, b2, 1, b3])
     } else if (alk3) {
@@ -56,7 +56,7 @@ function parse(name) {
         // FIXME: extract en/yn from alk
         const b1 = handleAlk(molecule, alk3.slice(0, -2)) // omit 'yl'
         const b2 = handleAlk(molecule, alk4.slice(0, -2)) // omit 'an'
-        const b3 = molecule.brancher(1)
+        const b3 = createBranch(molecule, 1)
         molecule.mutate([1, b3, 'O'])
 
         const lastMainPos = molecule.branches[b2].length
@@ -64,7 +64,7 @@ function parse(name) {
         molecule.bounder([lastMainPos, b2, 1, b3], [1, b1, 1, b3])
     } else if (ramifications) {
         // benzene
-        const branch = molecule.brancher(6)
+        const branch = createBranch(molecule, 6)
         molecule.bounder([1, 1, 2, 1], [3, 1, 4, 1], [5, 1, 6, 1])
 
         handleRamifications(molecule, branch, ramifications)
@@ -146,7 +146,7 @@ function handlePrefix(molecule, branch, pos, str) {
             doubleBond(molecule, branch, pos, 'O')
             break
         case 'formyl': // -CH=O
-            newBranch = molecule.brancher(2)
+            newBranch = createBranch(molecule, 2)
             molecule.mutate([2, newBranch, 'O'])
             molecule.bounder([pos, branch, 1, newBranch])
             molecule.bounder([1, newBranch, 2, newBranch])
@@ -154,7 +154,7 @@ function handlePrefix(molecule, branch, pos, str) {
         case 'carboxy': // -CO-OH
         case 'oic acid':
         case 'carboxylic acid':
-            newBranch = molecule.brancher(2)
+            newBranch = createBranch(molecule, 2)
             molecule.mutate([2, newBranch, 'O'])
             molecule.bounder([pos, branch, 1, newBranch])
             molecule.bounder([1, newBranch, 2, newBranch])
@@ -175,8 +175,13 @@ function handlePrefix(molecule, branch, pos, str) {
             throw new Error('unknown prefix: ' + str)
     }
 }
+
+function createBranch(molecule, ...branches) {
+    molecule.brancher(...branches)
+    return molecule.branches.length
+}
 function doubleBond(molecule, branch, pos, elt) {
-    const newBranch = molecule.brancher(1)
+    const newBranch = createBranch(molecule, 1)
     molecule.mutate([1, newBranch, elt])
     molecule.bounder([pos, branch, 1, newBranch])
     molecule.bounder([pos, branch, 1, newBranch])
