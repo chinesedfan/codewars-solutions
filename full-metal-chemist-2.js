@@ -45,11 +45,29 @@ function parse(name) {
         }
         handleEnd(molecule, branch, end)
     } else if (alk1) {
-
+        // ether, R1-O-R2
+        const b1 = handleAlk(molecule, alk1.slice(0, -2)) // omit 'yl'
+        const b2 = handleAlk(molecule, alk2.slice(0, -2)) // omit 'yl'
+        const b3 = molecule.brancher(1)
+        molecule.mutate([1, b3, 'O'])
+        molecule.bounder([1, b1, 1, b3], [1, b2, 1, b3])
     } else if (alk3) {
+        // ester, ...(C)O-O-R
+        // FIXME: extract en/yn from alk
+        const b1 = handleAlk(molecule, alk3.slice(0, -2)) // omit 'yl'
+        const b2 = handleAlk(molecule, alk4.slice(0, -2)) // omit 'an'
+        const b3 = molecule.brancher(1)
+        molecule.mutate([1, b3, 'O'])
 
+        const lastMainPos = molecule.branches[b2].length
+        doubleBond(molecule, b2, lastMainPos, 'O')
+        molecule.bounder([lastMainPos, b2, 1, b3], [1, b1, 1, b3])
     } else if (ramifications) {
+        // benzene
+        const branch = molecule.brancher(6)
+        molecule.bounder([1, 1, 2, 1], [3, 1, 4, 1], [5, 1, 6, 1])
 
+        handleRamifications(molecule, branch, ramifications)
     }
     molecule.closer()
     return molecule.atoms.reduce((obj, atom) => {
@@ -125,10 +143,7 @@ function handlePrefix(molecule, branch, pos, str) {
         case 'oxo': // =O
         case 'one': // =O
         case 'al':
-            newBranch = molecule.brancher(1)
-            molecule.mutate([1, newBranch, 'O'])
-            molecule.bounder([pos, branch, 1, newBranch])
-            molecule.bounder([pos, branch, 1, newBranch])
+            doubleBond(molecule, branch, pos, 'O')
             break
         case 'formyl': // -CH=O
             newBranch = molecule.brancher(2)
@@ -148,23 +163,24 @@ function handlePrefix(molecule, branch, pos, str) {
             break
         case 'amido': // (C)O-NH2
         case 'amide':
-            newBranch = molecule.brancher(1)
-            molecule.mutate([1, newBranch, 'O'])
-            molecule.bounder([pos, branch, 1, newBranch])
-            molecule.bounder([pos, branch, 1, newBranch])
+            doubleBond(molecule, branch, pos, 'O')
 
             molecule.add([pos, branch, 'N'])
             break
         case 'imino': // (C)=NH
         case 'imine': // (C)=NH
-            newBranch = molecule.brancher(1)
-            molecule.mutate([1, newBranch, 'N'])
-            molecule.bounder([pos, branch, 1, newBranch])
-            molecule.bounder([pos, branch, 1, newBranch])
+            doubleBond(molecule, branch, pos, 'N')
             break
         default:
             throw new Error('unknown prefix: ' + str)
     }
+}
+function doubleBond(molecule, branch, pos, elt) {
+    const newBranch = molecule.brancher(1)
+    molecule.mutate([1, newBranch, elt])
+    molecule.bounder([pos, branch, 1, newBranch])
+    molecule.bounder([pos, branch, 1, newBranch])
+    return newBranch
 }
 
 function parseRamifications(str) {
