@@ -5,6 +5,25 @@ const MULTIPLIERS = [        'di',  'tri',  'tetra', 'penta', 'hexa', 'hepta', '
 const SUFFIXES    = [         'ol',      'al', 'one', 'oic acid', 'carboxylic acid',                'oate',               'ether', 'amide', 'amine', 'imine', 'benzene', 'thiol',    'phosphine', 'arsine']
 const PREFIXES    = ['cyclo', 'hydroxy',       'oxo',             'carboxy',         'oxycarbonyl', 'anoyloxy', 'formyl', 'oxy',   'amido', 'amino', 'imino', 'phenyl',  'mercapto', 'phosphino', 'arsino', 'fluoro', 'chloro', 'bromo', 'iodo']
 
+const PREFIX2ELT = {
+    fluoro: 'F',
+    chloro: 'Cl',
+    bromo: 'Br',
+    iodo: 'I',
+    hydroxy: 'O',
+    mercapto: 'S',
+    amino: 'N',
+    phosphino: 'P',
+    arsino: 'As',
+}
+const SUFFIX2ELT = {
+    ol: 'O',
+    thiol: 'S',
+    amine: 'N',
+    phosphine: 'P',
+    arsine: 'As',
+}
+
 // Note that alkanes, alkenes alkynes, and akyles aren't present in these lists
 
 function parse(name) {
@@ -24,6 +43,7 @@ function parse(name) {
         if (before) {
             handleRamifications(molecule, branch, before)
         }
+        handleEnd(molecule, branch, end)
     } else if (alk1) {
 
     } else if (alk3) {
@@ -42,17 +62,15 @@ function handleRamifications(molecule, branch, str) {
     const rams = parseRamifications(str)
     rams.forEach(({ positions, subparts, cycloRadical, prefix }) => {
         positions.forEach(p => {
-            let newBranch
             if (prefix) {
-                newBranch = handlePrefix(molecule, prefix)
+                handlePrefix(molecule, branch, p, prefix)
             } else {
-                newBranch = handleAlk(molecule, cycloRadical)
+                const newBranch = handleAlk(molecule, cycloRadical)
+                if (subparts) {
+                    handleRamifications(molecule, newBranch, subparts)
+                }
+                molecule.bounder([p, branch, 1, newBranch])
             }
-
-            if (subparts) {
-                handleRamifications(molecule, newBranch, subparts)
-            }
-            molecule.bounder([p, branch, 1, newBranch])
         })
     })
 }
@@ -72,9 +90,81 @@ function handleAlk(molecule, cycloRadical, after) {
     }
     return branch
 }
-function handlePrefix(molecule, str) {
-    // TODO:
-    return branch
+function handleEnd(molecule, branch, str) {
+    if (str === 'e') {
+       return
+    }
+
+    parseRamifications(str).forEach(({ positions, prefix }) => {
+        positions.forEach(p => {
+            handlePrefix(molecule, branch, p, prefix)
+        })
+    })
+}
+function handlePrefix(molecule, branch, pos, str) {
+    let newBranch
+    switch (str) {
+        case 'fluoro': // -F
+        case 'chloro': // -Cl
+        case 'bromo':  // -Br
+        case 'iodo':   // -I
+        case 'hydroxy':  // -OH
+        case 'mercapto': // -SH
+        case 'amino': // -NH2
+        case 'phosphino': // -PH2
+        case 'arsino': // -AsH2
+            molecule.add([pos, branch, PREFIX2ELT[str]])
+            break
+        case 'ol':  // -OH
+        case 'thiol': // -SH
+        case 'amine': // -NH2
+        case 'phosphine': // -PH2
+        case 'arsine': // -AsH2
+            molecule.add([pos, branch, SUFFIX2ELT[str]])
+            break
+        case 'oxo': // =O
+        case 'one': // =O
+        case 'al':
+            newBranch = molecule.brancher(1)
+            molecule.mutate([1, newBranch, 'O'])
+            molecule.bounder([pos, branch, 1, newBranch])
+            molecule.bounder([pos, branch, 1, newBranch])
+            break
+        case 'formyl': // -CH=O
+            newBranch = molecule.brancher(2)
+            molecule.mutate([2, newBranch, 'O'])
+            molecule.bounder([pos, branch, 1, newBranch])
+            molecule.bounder([1, newBranch, 2, newBranch])
+            break
+        case 'carboxy': // -CO-OH
+        case 'oic acid':
+        case 'carboxylic acid':
+            newBranch = molecule.brancher(2)
+            molecule.mutate([2, newBranch, 'O'])
+            molecule.bounder([pos, branch, 1, newBranch])
+            molecule.bounder([1, newBranch, 2, newBranch])
+
+            molecule.add([1, newBranch, 'O'])
+            break
+        case 'amido': // (C)O-NH2
+        case 'amide':
+            newBranch = molecule.brancher(1)
+            molecule.mutate([1, newBranch, 'O'])
+            molecule.bounder([pos, branch, 1, newBranch])
+            molecule.bounder([pos, branch, 1, newBranch])
+
+            molecule.add([pos, branch, 'N'])
+            break
+        case 'imino': // (C)=NH
+        case 'imine': // (C)=NH
+            newBranch = molecule.brancher(1)
+            molecule.mutate([1, newBranch, 'N'])
+            molecule.bounder([pos, branch, 1, newBranch])
+            molecule.bounder([pos, branch, 1, newBranch])
+            break
+        default:
+            throw new Error('unknown prefix: ' + str)
+    }
 }
 
 function parseRamifications(str) {
@@ -237,6 +327,7 @@ const tests = [
     'hex-1,4-diene', // c6h10
     'hex-2-yne', // c6h10
     '3-ethyl-2,5-dimethylhexane',
+    '1,2-di[1-ethyl-3-[2-methyl]propyl]heptylcyclobutane',
     'tridec-4,10-dien-2,6,8-triyne',
     '3-[1-hydroxy]methylpentan-1,4-diol',
     '4-[1-oxo]ethylheptan-2,6-dione',
@@ -245,6 +336,7 @@ const tests = [
     '1-amino-6-[diethyl]arsinohexan-3-ol',
     'methylprop-1-enylether',
     '3-prop-2-enoxypropan-1-ol',
+    'methyl butanoate',
     '2-ethyl-1-formylbenzene',
     'cyclobutandiol',
 ]
