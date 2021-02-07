@@ -19,10 +19,10 @@ function parse(name) {
         ramifications
     ] = reg.exec(name)
     if (cycloRadical) {
-        handleAlk(molecule, cycloRadical, after)
+        const branch = handleAlk(molecule, cycloRadical, after)
 
         if (before) {
-            handleRamifications(molecule, before)
+            handleRamifications(molecule, branch, before)
         }
     } else if (alk1) {
 
@@ -38,44 +38,23 @@ function parse(name) {
     }, {})
 }
 
-function handleRamifications(molecule, str) {
-    // handle subs
-    const tokens = []
-    const stack = []
-    const others = []
-    for (let i = 0; i < str.length; i++) {
-        const ch = str[i]
-        if (ch === '[') {
-            stack.push(i)
-            others.length = 0 // throw away `multipler` chs
-        } else if (ch === ']') {
-            const sub = str.slice(stack.pop() + 1, i)
-            tokens.push(sub)
-        } else if (ch === '-' && !stack.length) {
-            tokens.push(others.join(''))
-            others.length = 0
-        }
+function handleRamifications(molecule, branch, str) {
+    const rams = parseRamifications(str)
+    rams.forEach(({ positions, subparts, cycloRadical, prefix }) => {
+        positions.forEach(p => {
+            let newBranch
+            if (prefix) {
+                newBranch = handlePrefix(molecule, prefix)
+            } else {
+                newBranch = handleAlk(molecule, cycloRadical)
+            }
 
-        if (!stack.length && ch !== '-') {
-            others.push(ch)
-        }
-    }
-    if (others.length) {
-        tokens.push(others.join(''))
-    }
-
-    // 1,3,5-tri
-    if (tokens.length & 1) throw new Error('bad ramifications: ' + str)
-
-    for (let i = 0; i < tokens.length; i += 2) {
-        const positions = tokens[i].split(',').map(Number)
-        const isAlk = /yl$/.test(tokens[i + 1])
-        if (isAlk) {
-            // TODO:            
-        } else {
-            // prefixes
-        }
-    }
+            if (subparts) {
+                handleRamifications(molecule, newBranch, subparts)
+            }
+            molecule.bounder([p, branch, 1, newBranch])
+        })
+    })
 }
 function handleAlk(molecule, cycloRadical, after) {
     const { isCyclo, radical } = parseRadical(cycloRadical)
@@ -86,11 +65,74 @@ function handleAlk(molecule, cycloRadical, after) {
         molecule.bounder([1, branch, radical, branch])
     }
 
-    if (after === 'an') {
+    if (!after || after === 'an') {
         // ignore
     } else {
         parseEnOrYn(after).forEach(c => molecule.bounder([c, branch, c + 1, branch]))
     }
+    return branch
+}
+function handlePrefix(molecule, str) {
+    // TODO:
+    return branch
+}
+
+function parseRamifications(str) {
+    const stack = []
+    const filtered = []
+    const subs = []
+    for (let i = 0; i < str.length; i++) {
+        const ch = str[i]
+        if (ch === '[') {
+            stack.push(i)
+        } else if (ch === ']') {
+            const sub = str.slice(stack.pop() + 1, i) // exclude [ and ]
+            if (!stack.length) {
+                filtered.push(`[${subs.length}]`)
+                subs.push(sub)
+            }
+        } else if (!stack.length) {
+            filtered.push(ch)
+        }
+    }
+
+    const tokens = filtered.join('').split('-').filter(Boolean)
+    if (tokens.length & 1) throw new Error('bad ramifications: ' + str)
+
+    const rams = []
+    for (let i = 0; i < tokens.length; i += 2) {
+        let subparts, cycloRadical, prefix
+        const positions = tokens[i].split(',').map(Number)
+        const substr = tokens[i + 1]
+
+        const tagStartIndex = substr.indexOf('[')
+        const tagEndIndex = substr.indexOf(']')
+        let afterTagPart
+        if (tagStartIndex < 0) {
+            const rMultipler = new RegExp(withFlag(MULTIPLIERS.join('|'), '?'))
+            const match = rMultipler.exec(substr)
+            afterTagPart = match[0].length ? substr.slice(match[0].length) : substr
+        } else {
+            const index = parseInt(substr.slice(tagStartIndex + 1, tagEndIndex))
+            subparts = subs[index]
+
+            afterTagPart = substr.slice(tagEndIndex + 1)
+        }
+
+        if (/yl$/.test(afterTagPart)) {
+            cycloRadical = afterTagPart.slice(0, -2)
+        } else {
+            prefix = afterTagPart
+        }
+
+        rams.push({
+            positions,
+            subparts,
+            cycloRadical,
+            prefix,
+        })
+    }
+    return rams
 }
 
 function parseRadical(str) {
