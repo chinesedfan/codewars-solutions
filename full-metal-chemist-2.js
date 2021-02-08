@@ -33,6 +33,7 @@ function parse(name) {
     const [
         _,
         before, cycloRadical, after, end,
+        before2, suffix,
         alk1, alk2,
         alk3, alk4,
         ramifications
@@ -44,6 +45,14 @@ function parse(name) {
             handleRamifications(molecule, branch, before)
         }
         handleEnd(molecule, branch, end)
+    } else if (suffix) {
+        // special amine, phosphine, arsine
+        const branch = createBranch(molecule, 1)
+        molecule.mutate([1, branch, SUFFIX2ELT[suffix]])
+
+        if (before2) {
+            handleRamifications(molecule, branch, before2)
+        }
     } else if (alk1) {
         // ether, R1-O-R2
         const b1 = handleAlk(molecule, alk1)
@@ -76,7 +85,7 @@ function parse(name) {
 }
 
 function handleRamifications(molecule, branch, str) {
-    const rams = parseRamifications(str)
+    const rams = parseRamifications(str, 1)
     rams.forEach(({ positions, subparts, cycloRadical, prefix }) => {
         positions.forEach(p => {
             if (prefix) {
@@ -315,7 +324,7 @@ function buildRegExps() {
     // FIXME: bad match when both prefix and suffix contain subparts
     const subparts = '\\[.+\\]'
     const ramification = join(
-        positions, '-', withFlag(multipler, '?'), withFlag(subparts, '?'),
+        withFlag(join(positions, '-'), '?'), withFlag(multipler, '?'), withFlag(subparts, '?'),
         or(
             join(cycloRadical, 'yl'),
             prefixes,
@@ -332,6 +341,7 @@ function buildRegExps() {
 
     const str = or(
         joinCaptured(before, cycloRadical, after, end),
+        joinCaptured(before, suffixes),
         joinCaptured(alk, 'yl', alk, 'yl', 'ether'),
         joinCaptured(alk, 'yl ', alk, 'anoate'),
         joinCaptured(ramifications, 'benzene')
