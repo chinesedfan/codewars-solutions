@@ -194,6 +194,8 @@ function doubleBond(molecule, branch, pos, elt) {
 }
 
 function parseRamifications(str, lastMainPos) {
+    const rMultipler = new RegExp(withFlag(MULTIPLIERS.join('|'), '?'))
+
     const stack = []
     const filtered = []
     const subs = []
@@ -215,7 +217,15 @@ function parseRamifications(str, lastMainPos) {
     const tokens = filtered.join('').split('-').filter(Boolean)
     if (tokens.length === 1) {
         // suffix
-        tokens.unshift(lastMainPos + '')
+        const match = rMultipler.exec(tokens[0])
+        if (match[0].length) {
+            const multipler = parseMultipler(match[0])
+            if (multipler !== 2) throw new Error('bad multipler: ' + str)
+            tokens.unshift([1, lastMainPos].join(','))
+            tokens[1] = tokens[1].slice(match[0].length)
+        } else {
+            tokens.unshift(lastMainPos + '')
+        }
     }
     if (tokens.length & 1) throw new Error('bad ramifications: ' + str)
 
@@ -229,7 +239,6 @@ function parseRamifications(str, lastMainPos) {
         const tagEndIndex = substr.indexOf(']')
         let afterTagPart
         if (tagStartIndex < 0) {
-            const rMultipler = new RegExp(withFlag(MULTIPLIERS.join('|'), '?'))
             const match = rMultipler.exec(substr)
             afterTagPart = match[0].length ? substr.slice(match[0].length) : substr
         } else {
@@ -270,6 +279,9 @@ function parseMultipler(str) {
 function parseEnOrYn(str) {
     // tridec-4,10-dien-2,6,8-triyn
     const tokens = str.split('-').filter(Boolean)
+    if (tokens.length === 1) {
+        tokens.unshift('1')
+    }
     if (tokens.length & 1) throw new Error('bad en or yn: ' + str)
 
     const bonders = [] // start positions
@@ -293,7 +305,7 @@ function buildRegExps() {
     const positions = join('\\d+', withFlag(',\\d+', '*'))
 
     // tridec-4,10-dien-2,6,8-triyne
-    const eneRepeatedPart = join('-', positions, '-', withFlag(multipler, '?'), or('en', 'yn'))
+    const eneRepeatedPart = join(withFlag(join('-', positions, '-'), '?'), withFlag(multipler, '?'), or('en', 'yn'))
     const alkenesOrAlkynes = withFlag(eneRepeatedPart, '+')
 
     const alk = join(cycloRadical, withFlag(eneRepeatedPart, '*'))
