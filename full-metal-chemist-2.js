@@ -3,7 +3,7 @@ const RADICALS    = ['meth', 'eth', 'prop', 'but',   'pent',  'hex',  'hept',  '
 const MULTIPLIERS = [        'di',  'tri',  'tetra', 'penta', 'hexa', 'hepta', 'octa', 'nona', 'deca', 'undeca', 'dodeca', 'trideca', 'tetradeca', 'pentadeca', 'hexadeca', 'heptadeca', 'octadeca', 'nonadeca']
 
 const SUFFIXES    = [         'ol',      'al', 'one', 'oic acid', 'carboxylic acid',                'oate',               'ether', 'amide', 'amine', 'imine', 'benzene', 'thiol',    'phosphine', 'arsine']
-const PREFIXES    = ['cyclo', 'hydroxy',       'oxo',             'carboxy',         'oxycarbonyl', 'anoyloxy', 'formyl', 'oxy',   'amido', 'amino', 'imino', 'phenyl',  'mercapto', 'phosphino', 'arsino', 'fluoro', 'chloro', 'bromo', 'iodo']
+const PREFIXES    = ['hydroxy',       'oxo',             'carboxy',         'oxycarbonyl', 'anoyloxy', 'formyl', 'oxy',   'amido', 'amino', 'imino', 'phenyl',  'mercapto', 'phosphino', 'arsino', 'fluoro', 'chloro', 'bromo', 'iodo']
 
 const PREFIX2ELT = {
     fluoro: 'F',
@@ -227,11 +227,26 @@ function parseRamifications(str, lastMainPos) {
     if (tokens.length === 1) {
         // suffix
         const match = rMultipler.exec(tokens[0])
+        const rams = tokens[0].split('yl').filter(Boolean)
         if (match[0].length) {
             const multipler = parseMultipler(match[0])
-            if (multipler !== 2) throw new Error('bad multipler: ' + str)
-            tokens.unshift([1, lastMainPos].join(','))
+            if (multipler === 2) {
+                tokens.unshift([1, lastMainPos].join(','))
+            } else if (multipler === 3) {
+                tokens.unshift([1, 1, 1].join(','))
+            } else {
+                throw new Error('bad multipler: ' + str)
+            }
+
             tokens[1] = tokens[1].slice(match[0].length)
+        } else if (rams.length > 1) {
+            // FIXME: not good condition, i.e. ethylmethylpropylamine
+            for (let i = 0; i < rams.length; i++) {
+                tokens[i] = rams[i] + 'yl'
+            }
+            for (let i = rams.length; i >= 1; i--) {
+                tokens.splice(i - 1, 0, '1')
+            }
         } else {
             tokens.unshift(lastMainPos + '')
         }
@@ -330,7 +345,7 @@ function buildRegExps() {
             prefixes,
         ),
     )
-    const ramifications = join(ramification, withFlag(join('-', ramification), '*'))
+    const ramifications = join(ramification, withFlag(join(withFlag('-', '?'), ramification), '*'))
 
     // 3-[1-hydroxy]methylpentan-1,4-diol
     const functionSuffixes = join(withFlag(join('-', positions, '-'), '?'), withFlag(multipler, '?'), suffixes)
