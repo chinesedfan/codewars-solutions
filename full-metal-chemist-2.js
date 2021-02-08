@@ -46,16 +46,15 @@ function parse(name) {
         handleEnd(molecule, branch, end)
     } else if (alk1) {
         // ether, R1-O-R2
-        const b1 = handleAlk(molecule, alk1.slice(0, -2)) // omit 'yl'
-        const b2 = handleAlk(molecule, alk2.slice(0, -2)) // omit 'yl'
+        const b1 = handleAlk(molecule, alk1)
+        const b2 = handleAlk(molecule, alk2)
         const b3 = createBranch(molecule, 1)
         molecule.mutate([1, b3, 'O'])
         molecule.bounder([1, b1, 1, b3], [1, b2, 1, b3])
     } else if (alk3) {
         // ester, ...(C)O-O-R
-        // FIXME: extract en/yn from alk
-        const b1 = handleAlk(molecule, alk3.slice(0, -2)) // omit 'yl'
-        const b2 = handleAlk(molecule, alk4.slice(0, -2)) // omit 'an'
+        const b1 = handleAlk(molecule, alk3)
+        const b2 = handleAlk(molecule, alk4)
         const b3 = createBranch(molecule, 1)
         molecule.mutate([1, b3, 'O'])
 
@@ -93,6 +92,12 @@ function handleRamifications(molecule, branch, str) {
     })
 }
 function handleAlk(molecule, cycloRadical, after) {
+    // extract en/yn from alk
+    const index = cycloRadical.indexOf('-')
+    if (index >= 0 && !after) {
+        after = cycloRadical.slice(index)
+        cycloRadical = cycloRadical.slice(0, index)
+    }
     const { isCyclo, radical } = parseRadical(cycloRadical)
 
     molecule.brancher(radical)
@@ -113,7 +118,7 @@ function handleEnd(molecule, branch, str) {
        return
     }
 
-    parseRamifications(str).forEach(({ positions, prefix }) => {
+    parseRamifications(str, molecule.branches[branch - 1].length).forEach(({ positions, prefix }) => {
         positions.forEach(p => {
             handlePrefix(molecule, branch, p, prefix)
         })
@@ -188,7 +193,7 @@ function doubleBond(molecule, branch, pos, elt) {
     return newBranch
 }
 
-function parseRamifications(str) {
+function parseRamifications(str, lastMainPos) {
     const stack = []
     const filtered = []
     const subs = []
@@ -208,6 +213,10 @@ function parseRamifications(str) {
     }
 
     const tokens = filtered.join('').split('-').filter(Boolean)
+    if (tokens.length === 1) {
+        // suffix
+        tokens.unshift(lastMainPos + '')
+    }
     if (tokens.length & 1) throw new Error('bad ramifications: ' + str)
 
     const rams = []
@@ -230,7 +239,7 @@ function parseRamifications(str) {
             afterTagPart = substr.slice(tagEndIndex + 1)
         }
 
-        if (/yl$/.test(afterTagPart)) {
+        if (/yl$/.test(afterTagPart) && ['oxycarbonyl', 'formyl'].indexOf(afterTagPart) < 0) {
             cycloRadical = afterTagPart.slice(0, -2)
         } else {
             prefix = afterTagPart
@@ -311,7 +320,7 @@ function buildRegExps() {
 
     const str = or(
         joinCaptured(before, cycloRadical, after, end),
-        joinCaptured(alk, 'yl', 'ether'),
+        joinCaptured(alk, 'yl', alk, 'yl', 'ether'),
         joinCaptured(alk, 'yl ', alk, 'anoate'),
         joinCaptured(ramifications, 'benzene')
     )
@@ -335,7 +344,7 @@ function or(...parts) {
 }
 function withGroup(str, opts = {}) {
     const { force, capture = false } = opts
-    if (!force && /^[a-z-]+$/.test(str)) return str
+    if (!force && /^[a-z -]+$/.test(str)) return str
 
     return capture ? `(${str})` : `(?:${str})`
 }

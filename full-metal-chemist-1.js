@@ -9,7 +9,10 @@ const atomInfo = {
  P: [3, 31],
  S: [2, 32.1],
  Cl: [1, 35.5],
- Br: [1, 80]
+ Br: [1, 80],
+ // for part 2
+ As: [3],
+ I: [1],
 }
 
 class InvalidBond extends Error {}
