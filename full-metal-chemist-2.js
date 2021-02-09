@@ -166,7 +166,6 @@ function handlePrefix(molecule, branch, pos, str) {
             molecule.bounder([1, newBranch, 2, newBranch])
             break
         case 'carboxy': // -CO-OH
-        case 'oic acid':
         case 'carboxylic acid':
             newBranch = createBranch(molecule, 2)
             molecule.mutate([2, newBranch, 'O'])
@@ -174,6 +173,11 @@ function handlePrefix(molecule, branch, pos, str) {
             molecule.bounder([1, newBranch, 2, newBranch])
 
             molecule.add([1, newBranch, 'O'])
+            break
+        case 'oic acid':
+            // the carbon is in the chain
+            doubleBond(molecule, branch, pos, 'O')
+            molecule.add([pos, branch, 'O'])
             break
         case 'amido': // (C)O-NH2
         case 'amide':
@@ -295,6 +299,7 @@ function parseRadical(str) {
         str = str.slice(5)
     }
     const radical = RADICALS.indexOf(str) + 1
+    if (!radical) throw new Error('invalid radical: ' + str)
     return { isCyclo, radical }
 }
 function parseMultipler(str) {
@@ -354,11 +359,12 @@ function buildRegExps() {
     const after = or('an', alkenesOrAlkynes)
     const end = or('e', functionSuffixes)
 
+    const alkHolder = '.+'
     const str = or(
         joinCaptured(before, cycloRadical, after, end),
-        joinCaptured(before, suffixes),
-        joinCaptured(alk, 'yl', alk, 'yl', 'ether'),
-        joinCaptured(alk, 'yl ', alk, 'anoate'),
+        joinCaptured(before, ['amine', 'phosphine', 'arsine'].join('|')),
+        joinCaptured(alkHolder, 'yl', alkHolder, 'yl', 'ether'),
+        joinCaptured(alkHolder, 'yl ', alkHolder, 'anoate'),
         joinCaptured(ramifications, 'benzene')
     )
     return new RegExp(`^${str}$`)
