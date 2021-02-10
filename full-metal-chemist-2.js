@@ -30,6 +30,14 @@ function parse(name) {
     // Parse the name given as argument in the constructor and output the dict representing the raw formula
     const molecule = new Molecule(name)
     const reg = buildRegExps()
+    handle(molecule, reg, name)
+    molecule.closer()
+    return molecule.atoms.reduce((obj, atom) => {
+        obj[atom.element] = (obj[atom.element] || 0) + 1
+        return obj
+    }, {})
+}
+function handle(molecule, reg, str) {
     const [
         _,
         before, cycloRadical, after, end,
@@ -37,7 +45,7 @@ function parse(name) {
         alk1, alk2,
         alk3, alk4,
         ramifications
-    ] = reg.exec(name)
+    ] = reg.exec(str)
     if (cycloRadical) {
         const branch = handleAlk(molecule, cycloRadical, after)
 
@@ -45,6 +53,7 @@ function parse(name) {
             handleRamifications(molecule, branch, before)
         }
         handleEnd(molecule, branch, end)
+        return branch
     } else if (suffix) {
         // special amine, phosphine, arsine
         const branch = createBranch(molecule, 1)
@@ -53,35 +62,34 @@ function parse(name) {
         if (before2) {
             handleRamifications(molecule, branch, before2)
         }
+        return branch
     } else if (alk1) {
         // ether, R1-O-R2
-        const b1 = handleAlk(molecule, alk1)
-        const b2 = handleAlk(molecule, alk2)
+        const b1 = handle(molecule, reg, alk1 + 'ane') // add a fake end
+        const b2 = handle(molecule, reg, alk2 + 'ane')
         const b3 = createBranch(molecule, 1)
         molecule.mutate([1, b3, 'O'])
         molecule.bounder([1, b1, 1, b3], [1, b2, 1, b3])
+        return b1
     } else if (alk3) {
         // ester, ...(C)O-O-R
-        const b1 = handleAlk(molecule, alk3)
-        const b2 = handleAlk(molecule, alk4)
+        const b1 = handle(molecule, reg, alk3 + 'ane')
+        const b2 = handle(molecule, reg, alk4 + 'ane')
         const b3 = createBranch(molecule, 1)
         molecule.mutate([1, b3, 'O'])
 
         const lastMainPos = molecule.branches[b2].length
         doubleBond(molecule, b2, lastMainPos, 'O')
         molecule.bounder([lastMainPos, b2, 1, b3], [1, b1, 1, b3])
+        return b2
     } else if (ramifications) {
         // benzene
         const branch = createBranch(molecule, 6)
         molecule.bounder([1, 1, 2, 1], [3, 1, 4, 1], [5, 1, 6, 1])
 
         handleRamifications(molecule, branch, ramifications)
+        return branch
     }
-    molecule.closer()
-    return molecule.atoms.reduce((obj, atom) => {
-        obj[atom.element] = (obj[atom.element] || 0) + 1
-        return obj
-    }, {})
 }
 
 function handleRamifications(molecule, branch, str) {
