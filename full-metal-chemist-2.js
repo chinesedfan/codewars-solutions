@@ -330,7 +330,21 @@ function parseRamifications(str, lastMainPos) {
                 && !/oxycarbonyl$/.test(afterTagPart)) {
             cycloRadical = afterTagPart.slice(0, -2)
         } else {
-            prefix = afterTagPart
+            let found = false
+            let pos = i + 2
+            while (pos + 1 < tokens.length
+                && /(en|yn)(yl)?$/.test(tokens[pos + 1])) {
+                found = true
+                pos += 2
+            }
+
+            if (found) {
+                cycloRadical = [afterTagPart, ...tokens.slice(i + 2, pos)].join('-')
+                cycloRadical = cycloRadical.slice(0, -2) // omit 'yl'
+                i = pos
+            } else {
+                prefix = afterTagPart
+            }
         }
 
         rams.push({
@@ -397,7 +411,7 @@ function buildRegExps() {
     const ramification = join(
         withFlag(join(positions, '-'), '?'), withFlag(multipler, '?'), withFlag(subparts, '?'),
         or(
-            join(cycloRadical, 'yl'),
+            join(cycloRadical, withFlag(alkenesOrAlkynes, '?'), 'yl'),
             prefixes,
         ),
     )
