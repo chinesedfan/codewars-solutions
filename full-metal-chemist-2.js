@@ -140,7 +140,7 @@ function handleEnd(molecule, branch, str) {
        return
     }
 
-    parseRamifications(str, 1).forEach(({ positions, prefix }) => {
+    parseRamifications(str, molecule.branches[branch - 1].length).forEach(({ positions, prefix }) => {
         positions.forEach(p => {
             handlePrefix(molecule, branch, p, prefix)
         })
@@ -302,7 +302,7 @@ function parseRamifications(str, lastMainPos) {
                 tokens.splice(i - 1, 0, '1')
             }
         } else {
-            tokens.unshift(lastMainPos + '')
+            tokens.unshift('1')
         }
     }
 
