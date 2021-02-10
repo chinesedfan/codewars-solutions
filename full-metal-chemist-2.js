@@ -329,14 +329,23 @@ function parseRamifications(str, lastMainPos) {
     for (let i = 0; i < tokens.length; i += 2) {
         let subparts, cycloRadical, prefix
         const positions = tokens[i].split(',').map(Number)
-        const substr = tokens[i + 1]
+        let substr = tokens[i + 1]
+        if (positions.length === 1) {
+            // ignore
+        } else {
+            const multipler = MULTIPLIERS[positions.length - 2]
+            if (substr.indexOf(multipler) === 0) {
+                substr = substr.slice(multipler.length)
+            } else {
+                throw new Error('bad multipler: ' + substr)
+            }
+        }
 
         const tagStartIndex = substr.indexOf('[')
         const tagEndIndex = substr.indexOf(']')
         let afterTagPart
         if (tagStartIndex < 0) {
-            const match = rMultipler.exec(substr)
-            afterTagPart = match[0].length ? substr.slice(match[0].length) : substr
+            afterTagPart = substr
         } else {
             const index = parseInt(substr.slice(tagStartIndex + 1, tagEndIndex))
             subparts = subs[index]
