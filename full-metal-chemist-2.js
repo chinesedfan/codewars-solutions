@@ -326,7 +326,7 @@ function parseRamifications(str, lastMainPos) {
         }
 
         if (/yl$/.test(afterTagPart)
-                && afterTagPart !== 'formyl'
+                && ['formyl', 'phenyl'].indexOf(afterTagPart) < 0
                 && !/oxycarbonyl$/.test(afterTagPart)) {
             cycloRadical = afterTagPart.slice(0, -2)
         } else {
