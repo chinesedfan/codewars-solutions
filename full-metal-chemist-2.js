@@ -40,9 +40,9 @@ function parse(name) {
 function handle(molecule, str, fakeEnd) {
     if (fakeEnd) {
         if (/(an|en|yn)$/.test(str)) {
-            str += 'e' 
+            str += 'e'
         } else {
-            str += 'ane' 
+            str += 'ane'
         }
     }
     const [
@@ -108,7 +108,10 @@ function handleRamifications(molecule, branch, str) {
     rams.forEach(({ positions, subparts, cycloRadical, prefix }) => {
         positions.forEach(p => {
             if (prefix) {
-                handlePrefix(molecule, branch, p, prefix)
+                const newBranch = handlePrefix(molecule, branch, p, prefix)
+                if (subparts) {
+                    handleRamifications(molecule, newBranch, subparts)
+                }
             } else {
                 const newBranch = handleAlk(molecule, cycloRadical)
                 if (subparts) {
@@ -164,14 +167,18 @@ function handlePrefix(molecule, branch, pos, str) {
         case 'amino': // -NH2
         case 'phosphino': // -PH2
         case 'arsino': // -AsH2
-            molecule.add([pos, branch, PREFIX2ELT[str]])
+            newBranch = createBranch(molecule, 1)
+            molecule.mutate([1, newBranch, PREFIX2ELT[str]])
+            molecule.bounder([pos, branch, 1, newBranch])
             break
         case 'ol':  // -OH
         case 'thiol': // -SH
         case 'amine': // -NH2
         case 'phosphine': // -PH2
         case 'arsine': // -AsH2
-            molecule.add([pos, branch, SUFFIX2ELT[str]])
+            newBranch = createBranch(molecule, 1)
+            molecule.mutate([1, newBranch, SUFFIX2ELT[str]])
+            molecule.bounder([pos, branch, 1, newBranch])
             break
         case 'oxo': // =O
         case 'one': // =O
@@ -243,6 +250,7 @@ function handlePrefix(molecule, branch, pos, str) {
                 throw new Error('unknown prefix: ' + str)
             }
     }
+    return newBranch
 }
 
 function createBranch(molecule, ...branches) {
