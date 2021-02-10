@@ -26,7 +26,7 @@ const SUFFIX2ELT = {
 
 // Note that alkanes, alkenes alkynes, and akyles aren't present in these lists
 
-const reg = buildRegExps()
+const { reg, rAlk } = buildRegExps()
 function parse(name) {
     // Parse the name given as argument in the constructor and output the dict representing the raw formula
     const molecule = new Molecule(name)
@@ -124,10 +124,10 @@ function handleRamifications(molecule, branch, str) {
 }
 function handleAlk(molecule, cycloRadical, after) {
     // extract en/yn from alk
-    const index = cycloRadical.indexOf('-')
-    if (index >= 0 && !after) {
-        after = cycloRadical.slice(index)
-        cycloRadical = cycloRadical.slice(0, index)
+    if (!after) {
+        const matches = rAlk.exec(cycloRadical)
+        cycloRadical = matches[1]
+        after = matches[2]
     }
     const { isCyclo, radical } = parseRadical(cycloRadical)
 
@@ -394,7 +394,7 @@ function parseMultipler(str) {
 function parseEnOrYn(str) {
     // tridec-4,10-dien-2,6,8-triyn
     const tokens = str.split('-').filter(Boolean)
-    if (tokens.length === 1) {
+    if (tokens.length & 1) {
         tokens.unshift('1')
     }
     if (tokens.length & 1) throw new Error('bad en or yn: ' + str)
@@ -454,7 +454,15 @@ function buildRegExps() {
         joinCaptured('di', alkHolder, 'yl', 'ether'),
         joinCaptured(ramifications, 'benzene')
     )
-    return new RegExp(`^${str}$`)
+
+    const obj = {
+        reg: str,
+        rAlk: joinCaptured(cycloRadical, withFlag(eneRepeatedPart, '*')),
+    }
+    return Object.keys(obj).reduce((o, k) => {
+        o[k] = new RegExp(`^${obj[k]}$`)
+        return o
+    }, {})
 }
 
 function joinCaptured(...parts) {
