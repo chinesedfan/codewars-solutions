@@ -357,7 +357,7 @@ function parseRamifications(str, lastMainPos) {
                 && ['formyl', 'phenyl'].indexOf(afterTagPart) < 0
                 && !/oxycarbonyl$/.test(afterTagPart)) {
             cycloRadical = afterTagPart.slice(0, -2)
-        } else {
+        } else if (['en', 'yn', ...RADICALS].some(r => substr.endsWith(r))) {
             let found
             let pos = i + 2
             while (pos + 1 < tokens.length) {
@@ -373,8 +373,10 @@ function parseRamifications(str, lastMainPos) {
                 cycloRadical = cycloRadical.slice(0, -found.length) // omit 'yl' and so on
                 i = pos
             } else {
-                prefix = afterTagPart
+                throw new Error('bad ramification part: ' + tokens[i + 1])
             }
+        } else {
+            prefix = afterTagPart
         }
 
         rams.push({
