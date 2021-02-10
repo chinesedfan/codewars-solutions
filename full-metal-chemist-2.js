@@ -251,7 +251,12 @@ function createBranch(molecule, ...branches) {
 }
 function createBenzene(molecule) {
     const branch = createBranch(molecule, 6)
-    molecule.bounder([1, 1, 2, 1], [3, 1, 4, 1], [5, 1, 6, 1], [1, 1, 6, 1])
+    molecule.bounder(
+        [1, branch, 2, branch],
+        [3, branch, 4, branch],
+        [5, branch, 6, branch],
+        [1, branch, 6, branch]
+    )
     return branch
 }
 function doubleBond(molecule, branch, pos, elt) {
