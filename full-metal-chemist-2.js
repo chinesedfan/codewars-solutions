@@ -26,18 +26,18 @@ const SUFFIX2ELT = {
 
 // Note that alkanes, alkenes alkynes, and akyles aren't present in these lists
 
+const reg = buildRegExps()
 function parse(name) {
     // Parse the name given as argument in the constructor and output the dict representing the raw formula
     const molecule = new Molecule(name)
-    const reg = buildRegExps()
-    handle(molecule, reg, name)
+    handle(molecule, name)
     molecule.closer()
     return molecule.atoms.reduce((obj, atom) => {
         obj[atom.element] = (obj[atom.element] || 0) + 1
         return obj
     }, {})
 }
-function handle(molecule, reg, str) {
+function handle(molecule, str) {
     const [
         _,
         before, cycloRadical, after, end,
@@ -65,16 +65,16 @@ function handle(molecule, reg, str) {
         return branch
     } else if (alk1) {
         // ether, R1-O-R2
-        const b1 = handle(molecule, reg, alk1 + 'ane') // add a fake end
-        const b2 = handle(molecule, reg, alk2 + 'ane')
+        const b1 = handle(molecule, alk1 + 'ane') // add a fake end
+        const b2 = handle(molecule, alk2 + 'ane')
         const b3 = createBranch(molecule, 1)
         molecule.mutate([1, b3, 'O'])
         molecule.bounder([1, b1, 1, b3], [1, b2, 1, b3])
         return b1
     } else if (alk3) {
         // ester, ...(C)O-O-R
-        const b1 = handle(molecule, reg, alk3 + 'ane')
-        const b2 = handle(molecule, reg, alk4 + 'ane')
+        const b1 = handle(molecule, alk3 + 'ane')
+        const b2 = handle(molecule, alk4 + 'ane')
         const b3 = createBranch(molecule, 1)
         molecule.mutate([1, b3, 'O'])
 
@@ -84,9 +84,7 @@ function handle(molecule, reg, str) {
         return b2
     } else if (ramifications) {
         // benzene
-        const branch = createBranch(molecule, 6)
-        molecule.bounder([1, 1, 2, 1], [3, 1, 4, 1], [5, 1, 6, 1])
-
+        const branch = createBenzene(molecule)
         handleRamifications(molecule, branch, ramifications)
         return branch
     }
@@ -197,14 +195,51 @@ function handlePrefix(molecule, branch, pos, str) {
         case 'imine': // (C)=NH
             doubleBond(molecule, branch, pos, 'N')
             break
+        case 'phenyl': // -C6H5
+            newBranch = createBenzene(molecule)
+            molecule.bounder([pos, branch, 1, newBranch])
+            break
         default:
-            throw new Error('unknown prefix: ' + str)
+            if (/oxycarbonyl$/.test(str)) { // ...(C)-CO-O-R
+                str = str.slice(0, -('oxycarbonyl'.length))
+                const auxBranch = handle(molecule, str + 'ane')
+
+                newBranch = createBranch(molecule, 2)
+                molecule.mutate([2, newBranch, 'O'])
+                doubleBond(molecule, newBranch, 1, 'O')
+
+                molecule.bounder([pos, branch, 1, newBranch], [2, newBranch, 1, auxBranch])
+            } else if (/anoyloxy$/.test(str)) { // ...(C)-O-OR
+                str = str.slice(0, -('anoyloxy'.length))
+                const auxBranch = handle(molecule, str + 'ane')
+                doubleBond(molecule, auxBranch, 1, 'O')
+
+                newBranch = createBranch(molecule, 1)
+                molecule.mutate([1, newBranch, 'O'])
+
+                molecule.bounder([pos, branch, 1, newBranch], [1, newBranch, 1, auxBranch])
+            } else if (/oxy$/.test(str)) { // R1-O-R2
+                str = str.slice(0, -('oxy'.length))
+                const auxBranch = handle(molecule, str + 'ane')
+
+                newBranch = createBranch(molecule, 1)
+                molecule.mutate([1, newBranch, 'O'])
+
+                molecule.bounder([pos, branch, 1, newBranch], [1, newBranch, 1, auxBranch])
+            } else {
+                throw new Error('unknown prefix: ' + str)
+            }
     }
 }
 
 function createBranch(molecule, ...branches) {
     molecule.brancher(...branches)
     return molecule.branches.length
+}
+function createBenzene(molecule) {
+    const branch = createBranch(molecule, 6)
+    molecule.bounder([1, 1, 2, 1], [3, 1, 4, 1], [5, 1, 6, 1])
+    return branch
 }
 function doubleBond(molecule, branch, pos, elt) {
     const newBranch = createBranch(molecule, 1)
@@ -284,7 +319,9 @@ function parseRamifications(str, lastMainPos) {
             afterTagPart = substr.slice(tagEndIndex + 1)
         }
 
-        if (/yl$/.test(afterTagPart) && ['oxycarbonyl', 'formyl'].indexOf(afterTagPart) < 0) {
+        if (/yl$/.test(afterTagPart)
+                && afterTagPart !== 'formyl'
+                && !/oxycarbonyl$/.test(afterTagPart)) {
             cycloRadical = afterTagPart.slice(0, -2)
         } else {
             prefix = afterTagPart
