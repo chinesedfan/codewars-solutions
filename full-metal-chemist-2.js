@@ -229,8 +229,8 @@ function handlePrefix(molecule, branch, pos, str) {
                 doubleBond(molecule, newBranch, 1, 'O')
 
                 molecule.bounder([pos, branch, 1, newBranch], [2, newBranch, 1, auxBranch])
-            } else if (/anoyloxy$/.test(str)) { // ...(C)-O-OR
-                str = str.slice(0, -('anoyloxy'.length))
+            } else if (/oyloxy$/.test(str)) { // ...(C)-O-OR
+                str = str.slice(0, -('oyloxy'.length))
                 const auxBranch = handle(molecule, str, true)
                 doubleBond(molecule, auxBranch, 1, 'O')
 
@@ -349,17 +349,19 @@ function parseRamifications(str, lastMainPos) {
                 && !/oxycarbonyl$/.test(afterTagPart)) {
             cycloRadical = afterTagPart.slice(0, -2)
         } else {
-            let found = false
+            let found
             let pos = i + 2
-            while (pos + 1 < tokens.length
-                && /(en|yn)(yl)?$/.test(tokens[pos + 1])) {
-                found = true
+            while (pos + 1 < tokens.length) {
+                const matches = /(en|yn)(yl|oxycarbonyl|oyloxy|oxy)?$/.exec(tokens[pos + 1])
+                if (!matches) break
+
+                found = matches[2]
                 pos += 2
             }
 
             if (found) {
                 cycloRadical = [afterTagPart, ...tokens.slice(i + 2, pos)].join('-')
-                cycloRadical = cycloRadical.slice(0, -2) // omit 'yl'
+                cycloRadical = cycloRadical.slice(0, -found.length) // omit 'yl' and so on
                 i = pos
             } else {
                 prefix = afterTagPart
@@ -422,7 +424,7 @@ function buildRegExps() {
     const alkenesOrAlkynes = withFlag(eneRepeatedPart, '+')
 
     const alk = join(cycloRadical, withFlag(eneRepeatedPart, '*'))
-    const prefixes = or(join(alk, 'oxy'), ...PREFIXES)
+    const prefixes = or(join(alk, or('oxycarbonyl', 'oyloxy', 'oxy')), ...PREFIXES)
     const suffixes = SUFFIXES.join('|')
 
     // FIXME: bad match when both prefix and suffix contain subparts
