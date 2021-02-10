@@ -39,7 +39,7 @@ function parse(name) {
 }
 function handle(molecule, str, fakeEnd) {
     if (fakeEnd) {
-        if (/(en|yn)$/.test(str)) {
+        if (/(an|en|yn)$/.test(str)) {
             str += 'e' 
         } else {
             str += 'ane' 
