@@ -278,7 +278,7 @@ function parseRamifications(str, lastMainPos) {
     }
 
     const tokens = filtered.join('').split('-').filter(Boolean)
-    if (tokens.length === 1) {
+    if (tokens.length & 1) {
         // suffix
         const match = rMultipler.exec(tokens[0])
         const rams = tokens[0].split('yl').filter(Boolean)
@@ -305,7 +305,6 @@ function parseRamifications(str, lastMainPos) {
             tokens.unshift(lastMainPos + '')
         }
     }
-    if (tokens.length & 1) throw new Error('bad ramifications: ' + str)
 
     const rams = []
     for (let i = 0; i < tokens.length; i += 2) {
