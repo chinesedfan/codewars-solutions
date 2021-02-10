@@ -51,6 +51,7 @@ function handle(molecule, str, fakeEnd) {
         before2, suffix,
         alk1, alk2,
         alk3, alk4,
+        alk5,
         ramifications
     ] = reg.exec(str)
     if (cycloRadical) {
@@ -70,10 +71,15 @@ function handle(molecule, str, fakeEnd) {
             handleRamifications(molecule, branch, before2)
         }
         return branch
-    } else if (alk1) {
+    } else if (alk1 || alk5) {
         // ether, R1-O-R2
-        const b1 = handle(molecule, alk1, true) // add a fake end
-        const b2 = handle(molecule, alk2, true)
+        let sameAlk = alk5
+        if (alk5 && alk5[0] === '[') {
+            const tagEndIndex = alk5.indexOf(']')
+            sameAlk = alk5.slice(1, tagEndIndex) + alk5.slice(tagEndIndex + 1)
+        }
+        const b1 = handle(molecule, alk1 || sameAlk, true) // add a fake end
+        const b2 = handle(molecule, alk2 || sameAlk, true)
         const b3 = createBranch(molecule, 1)
         molecule.mutate([1, b3, 'O'])
         molecule.bounder([1, b1, 1, b3], [1, b2, 1, b3])
@@ -430,6 +436,7 @@ function buildRegExps() {
         joinCaptured(before, ['amine', 'phosphine', 'arsine'].join('|')),
         joinCaptured(alkHolder, 'yl', alkHolder, 'yl', 'ether'),
         joinCaptured(alkHolder, 'yl ', alkHolder, 'oate'),
+        joinCaptured('di', alkHolder, 'yl', 'ether'),
         joinCaptured(ramifications, 'benzene')
     )
     return new RegExp(`^${str}$`)
