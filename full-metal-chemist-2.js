@@ -370,7 +370,13 @@ function parseRamifications(str, lastMainPos) {
 
             if (found) {
                 cycloRadical = [afterTagPart, ...tokens.slice(i + 2, pos)].join('-')
-                cycloRadical = cycloRadical.slice(0, -found.length) // omit 'yl' and so on
+                if (found === 'yl') {
+                    cycloRadical = cycloRadical.slice(0, -found.length) // omit 'yl'
+                } else {
+                    // give to `handlePrefix`
+                    prefix = cycloRadical
+                    cycloRadical = ''
+                }
                 i = pos
             } else {
                 throw new Error('bad ramification part: ' + tokens[i + 1])
