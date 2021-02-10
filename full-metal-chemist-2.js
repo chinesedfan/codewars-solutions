@@ -37,7 +37,14 @@ function parse(name) {
         return obj
     }, {})
 }
-function handle(molecule, str) {
+function handle(molecule, str, fakeEnd) {
+    if (fakeEnd) {
+        if (/(en|yn)$/.test(str)) {
+            str += 'e' 
+        } else {
+            str += 'ane' 
+        }
+    }
     const [
         _,
         before, cycloRadical, after, end,
@@ -65,16 +72,16 @@ function handle(molecule, str) {
         return branch
     } else if (alk1) {
         // ether, R1-O-R2
-        const b1 = handle(molecule, alk1 + 'ane') // add a fake end
-        const b2 = handle(molecule, alk2 + 'ane')
+        const b1 = handle(molecule, alk1, true) // add a fake end
+        const b2 = handle(molecule, alk2, true)
         const b3 = createBranch(molecule, 1)
         molecule.mutate([1, b3, 'O'])
         molecule.bounder([1, b1, 1, b3], [1, b2, 1, b3])
         return b1
     } else if (alk3) {
         // ester, ...(C)O-O-R
-        const b1 = handle(molecule, alk3 + 'ane')
-        const b2 = handle(molecule, alk4 + 'ane')
+        const b1 = handle(molecule, alk3, true)
+        const b2 = handle(molecule, alk4, true)
         const b3 = createBranch(molecule, 1)
         molecule.mutate([1, b3, 'O'])
 
@@ -202,7 +209,7 @@ function handlePrefix(molecule, branch, pos, str) {
         default:
             if (/oxycarbonyl$/.test(str)) { // ...(C)-CO-O-R
                 str = str.slice(0, -('oxycarbonyl'.length))
-                const auxBranch = handle(molecule, str + 'ane')
+                const auxBranch = handle(molecule, str, true)
 
                 newBranch = createBranch(molecule, 2)
                 molecule.mutate([2, newBranch, 'O'])
@@ -211,7 +218,7 @@ function handlePrefix(molecule, branch, pos, str) {
                 molecule.bounder([pos, branch, 1, newBranch], [2, newBranch, 1, auxBranch])
             } else if (/anoyloxy$/.test(str)) { // ...(C)-O-OR
                 str = str.slice(0, -('anoyloxy'.length))
-                const auxBranch = handle(molecule, str + 'ane')
+                const auxBranch = handle(molecule, str, true)
                 doubleBond(molecule, auxBranch, 1, 'O')
 
                 newBranch = createBranch(molecule, 1)
@@ -220,7 +227,7 @@ function handlePrefix(molecule, branch, pos, str) {
                 molecule.bounder([pos, branch, 1, newBranch], [1, newBranch, 1, auxBranch])
             } else if (/oxy$/.test(str)) { // R1-O-R2
                 str = str.slice(0, -('oxy'.length))
-                const auxBranch = handle(molecule, str + 'ane')
+                const auxBranch = handle(molecule, str, true)
 
                 newBranch = createBranch(molecule, 1)
                 molecule.mutate([1, newBranch, 'O'])
@@ -409,7 +416,7 @@ function buildRegExps() {
         joinCaptured(before, cycloRadical, after, end),
         joinCaptured(before, ['amine', 'phosphine', 'arsine'].join('|')),
         joinCaptured(alkHolder, 'yl', alkHolder, 'yl', 'ether'),
-        joinCaptured(alkHolder, 'yl ', alkHolder, 'anoate'),
+        joinCaptured(alkHolder, 'yl ', alkHolder, 'oate'),
         joinCaptured(ramifications, 'benzene')
     )
     return new RegExp(`^${str}$`)
