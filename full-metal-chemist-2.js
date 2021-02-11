@@ -229,6 +229,7 @@ function handlePrefix(molecule, branch, pos, str) {
                 doubleBond(molecule, newBranch, 1, 'O')
 
                 molecule.bounder([pos, branch, 1, newBranch], [2, newBranch, 1, auxBranch])
+                return auxBranch
             } else if (/oyloxy$/.test(str)) { // ...(C)-O-OR
                 str = str.slice(0, -('oyloxy'.length))
                 const auxBranch = handle(molecule, str, true)
@@ -238,6 +239,7 @@ function handlePrefix(molecule, branch, pos, str) {
                 molecule.mutate([1, newBranch, 'O'])
 
                 molecule.bounder([pos, branch, 1, newBranch], [1, newBranch, 1, auxBranch])
+                return auxBranch
             } else if (/oxy$/.test(str)) { // R1-O-R2
                 str = str.slice(0, -('oxy'.length))
                 const auxBranch = handle(molecule, str, true)
@@ -246,6 +248,7 @@ function handlePrefix(molecule, branch, pos, str) {
                 molecule.mutate([1, newBranch, 'O'])
 
                 molecule.bounder([pos, branch, 1, newBranch], [1, newBranch, 1, auxBranch])
+                return auxBranch
             } else {
                 throw new Error('unknown prefix: ' + str)
             }
