@@ -313,8 +313,6 @@ function parseRamifications(str, lastMainPos) {
             } else {
                 throw new Error('bad multipler: ' + str)
             }
-
-            tokens[1] = tokens[1].slice(match[0].length)
         } else if (rams.length > 1) {
             // FIXME: not good condition, i.e. ethylmethylpropylamine
             for (let i = 0; i < rams.length; i++) {
@@ -380,7 +378,7 @@ function parseRamifications(str, lastMainPos) {
                     prefix = cycloRadical
                     cycloRadical = ''
                 }
-                i = pos
+                i = pos - 2
             } else {
                 throw new Error('bad ramification part: ' + tokens[i + 1])
             }
@@ -443,8 +441,8 @@ function buildRegExps() {
     const eneRepeatedPart = join(withFlag(join('-', positions, '-'), '?'), withFlag(multipler, '?'), or('en', 'yn'))
     const alkenesOrAlkynes = withFlag(eneRepeatedPart, '+')
 
-    const alk = join(cycloRadical, withFlag(eneRepeatedPart, '*'))
-    const prefixes = or(join(alk, or('oxycarbonyl', 'oyloxy', 'oxy')), ...PREFIXES)
+    const alkHolder = '.+'
+    const prefixes = or(join(alkHolder, or('oxycarbonyl', 'oyloxy', 'oxy')), ...PREFIXES)
     const suffixes = SUFFIXES.join('|')
 
     // FIXME: bad match when both prefix and suffix contain subparts
@@ -465,7 +463,6 @@ function buildRegExps() {
     const after = or('an', alkenesOrAlkynes)
     const end = or('e', functionSuffixes)
 
-    const alkHolder = '.+'
     const str = or(
         joinCaptured(before, cycloRadical, after, end),
         joinCaptured(before, ['amine', 'phosphine', 'arsine'].join('|')),
