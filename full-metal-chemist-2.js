@@ -325,11 +325,10 @@ function parseRamifications(str, lastMainPos) {
         }
     }
 
-    const tokens = filtered.join('').split('-').filter(Boolean)
+    let tokens = filtered.join('').split('-').filter(Boolean)
     if (tokens.length & 1) {
         // suffix
         const match = rMultipler.exec(tokens[0])
-        const rams = tokens[0].split('yl').filter(Boolean)
         if (match[0].length) {
             const multipler = parseMultipler(match[0])
             if (multipler === 2) {
@@ -339,18 +338,49 @@ function parseRamifications(str, lastMainPos) {
             } else {
                 throw new Error('bad multipler: ' + str)
             }
-        } else if (rams.length > 1) {
-            // FIXME: not good condition, i.e. ethylmethylpropylamine
-            for (let i = 0; i < rams.length; i++) {
-                tokens[i] = rams[i] + 'yl'
-            }
-            for (let i = rams.length; i >= 1; i--) {
-                tokens.splice(i - 1, 0, '1')
-            }
         } else {
             tokens.unshift('1')
         }
     }
+    for (let i = 0; i < tokens.length; i += 2) {
+        const cut = {}
+        const skipped = {}
+        const substr = tokens[i + 1]
+        // make sure longer prefixes be checked before than shorter ones
+        ;[...PREFIXES, 'yl'].forEach(p => {
+            let pos = 0
+            while ((pos = substr.indexOf(p, pos)) >= 0) {
+                const k = pos + p.length
+                if (!skipped[k]) {
+                    cut[k] = 1
+                    if (p !== 'oxy' && p.endsWith('oxy')) {
+                        skipped[k - 3] = 1
+                    } else if (p !== 'yl' && p.endsWith('yl')) {
+                        skipped[k - 2] = 1
+                    }
+                }
+                pos++
+            }
+        })
+
+        const cuts = [...new Set(
+            Object.keys(cut).map(Number)
+        )].sort((a, b) => a - b)
+        if (!cuts.length) continue
+
+        const parts = []
+        cuts.map((pos, j, list) => substr.slice(j ? list[j - 1] : 0, pos))
+            .forEach((part, j) => {
+                // skip the first one, as its multipler has been added before
+                if (j) {
+                    parts.push('1', part)
+                } else {
+                    parts.push(part)
+                }
+            })
+        tokens[i + 1] = parts
+    }
+    tokens = tokens.reduce((list, item) => list.concat(item), [])
 
     const rams = []
     for (let i = 0; i < tokens.length; i += 2) {
