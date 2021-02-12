@@ -460,7 +460,7 @@ function buildRegExps() {
     const functionSuffixes = join(withFlag(join('-', positions, '-'), '?'), withFlag(multipler, '?'), suffixes)
 
     const before = withFlag(ramifications, '?')
-    const after = or('an', alkenesOrAlkynes)
+    const after = or(withFlag('an', '?'), alkenesOrAlkynes) // FIXME: not sure `an` can be omitted
     const end = or('e', functionSuffixes)
 
     const str = or(
