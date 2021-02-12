@@ -410,6 +410,10 @@ function parseMultipler(str) {
     return MULTIPLIERS.indexOf(str) + 2
 }
 function parseEnOrYn(str) {
+    if (str.endsWith('an')) {
+        // FIXME: bad fix for propenanoyloxy
+        str = str.slice(0, -2)
+    }
     // tridec-4,10-dien-2,6,8-triyn
     const tokens = str.split('-').filter(Boolean)
     if (tokens.length & 1) {
@@ -460,7 +464,10 @@ function buildRegExps() {
     const functionSuffixes = join(withFlag(join('-', positions, '-'), '?'), withFlag(multipler, '?'), suffixes)
 
     const before = withFlag(ramifications, '?')
-    const after = or(withFlag('an', '?'), alkenesOrAlkynes) // FIXME: not sure `an` can be omitted
+    const after = or(
+        withFlag('an', '?'), // FIXME: not sure `an` can be omitted
+        join(alkenesOrAlkynes, withFlag('an', '?')), // FIXME: not sure extra `an` is allowed
+    )
     const end = or('e', functionSuffixes)
 
     const str = or(
@@ -473,7 +480,7 @@ function buildRegExps() {
     )
 
     const obj = {
-        reg: str,
+        reg: withGroup(str),
         rAlk: joinCaptured(cycloRadical, withFlag(eneRepeatedPart, '*')),
     }
     return Object.keys(obj).reduce((o, k) => {
