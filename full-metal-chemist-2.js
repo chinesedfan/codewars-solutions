@@ -30,7 +30,12 @@ const { reg, rAlk } = buildRegExps()
 function parse(name) {
     // Parse the name given as argument in the constructor and output the dict representing the raw formula
     const molecule = new Molecule(name)
-    handle(molecule, name)
+    try {
+        handle(molecule, name)
+    } catch (e) {
+        console.log(name)
+        throw e
+    }
     molecule.closer()
     return molecule.atoms.reduce((obj, atom) => {
         obj[atom.element] = (obj[atom.element] || 0) + 1
@@ -86,15 +91,36 @@ function handle(molecule, str, fakeEnd) {
         return b1
     } else if (alk3) {
         // ester, ...(C)O-O-R
-        const b1 = handle(molecule, alk3, true)
-        const b2 = handle(molecule, alk4, true)
-        const b3 = createBranch(molecule, 1)
-        molecule.mutate([1, b3, 'O'])
+        let mainAlk = alk4
+        let positions = [1]
+        if (alk4.endsWith('di')) {
+            const tokens = alk4.split('-')
+            if (tokens.length === 1) {
+                mainAlk = alk4.slice(0, -2) // omit 'di'
+                positions = [] // fill later
+            } else if (tokens.length === 3) {
+                // butyl ethan-1,2-dioate
+                mainAlk = tokens[0]
+                positions = tokens[1].split(',').map(Number)
+            } else {
+                throw new Error('bad tokens: ' + alk4)
+            }
+        }
 
-        const lastMainPos = molecule.branches[b2].length
-        doubleBond(molecule, b2, lastMainPos, 'O')
-        molecule.bounder([lastMainPos, b2, 1, b3], [1, b1, 1, b3])
-        return b2
+        const mainBranch = handle(molecule, mainAlk, true)
+        const lastMainPos = molecule.branches[mainBranch - 1].length
+        if (!positions.length) {
+            positions = [1, lastMainPos]
+        }
+        positions.forEach(p => {
+            const auxBranch = handle(molecule, alk3, true)
+            const oBranch = createBranch(molecule, 1)
+            molecule.mutate([1, oBranch, 'O'])
+
+            doubleBond(molecule, mainBranch, p, 'O')
+            molecule.bounder([p, mainBranch, 1, oBranch], [1, auxBranch, 1, oBranch])
+        })
+        return mainBranch
     } else if (ramifications) {
         // benzene
         const branch = createBenzene(molecule)
