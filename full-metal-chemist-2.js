@@ -105,6 +105,9 @@ function handle(molecule, str, fakeEnd) {
             } else {
                 throw new Error('bad tokens: ' + alk4)
             }
+        } else if (alk4.endsWith('-')) {
+            // propan-1-oate
+            mainAlk = alk4.slice(0, -3) // omit '-1-'
         }
 
         const mainBranch = handle(molecule, mainAlk, true)
@@ -305,6 +308,9 @@ function doubleBond(molecule, branch, pos, elt) {
 }
 
 function parseRamifications(str, lastMainPos, isSuffix) {
+    if (str[0] === '[' && str.endsWith(']')) {
+        str = str.slice(1, -1)
+    }
     const rMultipler = new RegExp(withFlag(MULTIPLIERS.join('|'), '?'))
 
     const stack = []
@@ -514,7 +520,7 @@ function buildRegExps() {
             prefixes,
         ),
     )
-    const ramifications = join(ramification, withFlag(join(withFlag('-', '?'), ramification), '*'))
+    const ramifications = join('\\[?', ramification, withFlag(join(withFlag('-', '?'), ramification), '*'), '\\]?')
 
     // 3-[1-hydroxy]methylpentan-1,4-diol
     const functionSuffixes = join(withFlag(join('-', positions, '-'), '?'), withFlag(multipler, '?'), suffixes)
