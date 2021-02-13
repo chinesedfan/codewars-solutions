@@ -175,7 +175,7 @@ function handleEnd(molecule, branch, str) {
        return
     }
 
-    parseRamifications(str, molecule.branches[branch - 1].length).forEach(({ positions, prefix }) => {
+    parseRamifications(str, molecule.branches[branch - 1].length, true).forEach(({ positions, prefix }) => {
         positions.forEach(p => {
             handlePrefix(molecule, branch, p, prefix)
         })
@@ -304,7 +304,7 @@ function doubleBond(molecule, branch, pos, elt) {
     return newBranch
 }
 
-function parseRamifications(str, lastMainPos) {
+function parseRamifications(str, lastMainPos, isSuffix) {
     const rMultipler = new RegExp(withFlag(MULTIPLIERS.join('|'), '?'))
 
     const stack = []
@@ -343,6 +343,8 @@ function parseRamifications(str, lastMainPos) {
         }
     }
     for (let i = 0; i < tokens.length; i += 2) {
+        if (isSuffix) break
+
         const cut = {}
         const skipped = {}
         const substr = tokens[i + 1]
@@ -353,10 +355,8 @@ function parseRamifications(str, lastMainPos) {
                 const k = pos + p.length
                 if (!skipped[k]) {
                     cut[k] = 1
-                    if (p !== 'oxy' && p.endsWith('oxy')) {
-                        skipped[k - 3] = 1
-                    } else if (p !== 'yl' && p.endsWith('yl')) {
-                        skipped[k - 2] = 1
+                    for (let j = 1; j < p.length; j++) {
+                        skipped[k - j] = 1
                     }
                 }
                 pos++
