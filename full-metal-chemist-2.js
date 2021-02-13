@@ -311,7 +311,6 @@ function parseRamifications(str, lastMainPos, isSuffix) {
     if (str[0] === '[' && str.endsWith(']')) {
         str = str.slice(1, -1)
     }
-    const rMultipler = new RegExp(withFlag(MULTIPLIERS.join('|'), '?'))
 
     const stack = []
     const filtered = []
@@ -333,21 +332,8 @@ function parseRamifications(str, lastMainPos, isSuffix) {
 
     let tokens = filtered.join('').split('-').filter(Boolean)
     if (tokens.length & 1) {
-        // suffix
-        const match = rMultipler.exec(tokens[0])
-        if (match[0].length) {
-            const multipler = parseMultipler(match[0])
-            if (multipler === 2) {
-                tokens.unshift([1, lastMainPos].join(','))
-            } else if (multipler === 3) {
-                tokens.unshift([1, 1, 1].join(','))
-            } else {
-                // heptadecyl
-                tokens.unshift('1')
-            }
-        } else {
-            tokens.unshift('1')
-        }
+        const positions = getOmittedPositions(tokens[0], lastMainPos)
+        tokens.unshift(positions)
     }
     for (let i = 0; i < tokens.length; i += 2) {
         if (isSuffix) break
@@ -380,7 +366,7 @@ function parseRamifications(str, lastMainPos, isSuffix) {
             .forEach((part, j) => {
                 // skip the first one, as its multipler has been added before
                 if (j) {
-                    parts.push('1', part)
+                    parts.push(getOmittedPositions(part, lastMainPos), part)
                 } else {
                     parts.push(part)
                 }
@@ -457,6 +443,23 @@ function parseRamifications(str, lastMainPos, isSuffix) {
         })
     }
     return rams
+}
+function getOmittedPositions(str, lastMainPos) {
+    const rMultipler = new RegExp(withFlag(MULTIPLIERS.join('|'), '?'))
+    const match = rMultipler.exec(str)
+    if (match[0].length) {
+        const multipler = parseMultipler(match[0])
+        if (multipler === 2) {
+            return [1, lastMainPos].join(',')
+        } else if (multipler === 3) {
+            return [1, 1, 1].join(',')
+        } else {
+            // heptadecyl
+            return '1'
+        }
+    } else {
+        return '1'
+    }
 }
 
 function parseRadical(str) {
