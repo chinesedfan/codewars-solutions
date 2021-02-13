@@ -98,10 +98,10 @@ function handle(molecule, str, fakeEnd) {
             if (tokens.length === 1) {
                 mainAlk = alk4.slice(0, -2) // omit 'di'
                 positions = [] // fill later
-            } else if (tokens.length === 3) {
+            } else if (tokens.length >= 3) {
                 // butyl ethan-1,2-dioate
-                mainAlk = tokens[0]
-                positions = tokens[1].split(',').map(Number)
+                mainAlk = tokens.slice(0, -2).join('-')
+                positions = tokens[tokens.length - 2].split(',').map(Number)
             } else {
                 throw new Error('bad tokens: ' + alk4)
             }
