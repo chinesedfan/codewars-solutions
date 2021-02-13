@@ -342,7 +342,8 @@ function parseRamifications(str, lastMainPos, isSuffix) {
             } else if (multipler === 3) {
                 tokens.unshift([1, 1, 1].join(','))
             } else {
-                throw new Error('bad multipler: ' + str)
+                // heptadecyl
+                tokens.unshift('1')
             }
         } else {
             tokens.unshift('1')
