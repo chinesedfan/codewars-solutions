@@ -54,7 +54,7 @@ function handle(molecule, str, fakeEnd) {
         _,
         before, cycloRadical, after, end,
         before2, suffix,
-        alk1, alk2,
+        alk1,
         alk3, alk4,
         alk5,
         ramifications
@@ -79,12 +79,17 @@ function handle(molecule, str, fakeEnd) {
     } else if (alk1 || alk5) {
         // ether, R1-O-R2
         let sameAlk = alk5
-        if (alk5 && alk5[0] === '[') {
+        let alkPart1, alkPart2
+        if (alk1) {
+            const index = findFirstYl(alk1)
+            alkPart1 = alk1.slice(0, index)
+            alkPart2 = alk1.slice(index + 2) // 'yl'
+        } else if (alk5 && alk5[0] === '[') {
             const tagEndIndex = alk5.indexOf(']')
             sameAlk = alk5.slice(1, tagEndIndex) + alk5.slice(tagEndIndex + 1)
         }
-        const b1 = handle(molecule, alk1 || sameAlk, true) // add a fake end
-        const b2 = handle(molecule, alk2 || sameAlk, true)
+        const b1 = handle(molecule, alkPart1 || sameAlk, true) // add a fake end
+        const b2 = handle(molecule, alkPart2 || sameAlk, true)
         const b3 = createBranch(molecule, 1)
         molecule.mutate([1, b3, 'O'])
         molecule.bounder([1, b1, 1, b3], [1, b2, 1, b3])
@@ -132,6 +137,20 @@ function handle(molecule, str, fakeEnd) {
     }
 }
 
+function findFirstYl(str) {
+    const stack = []
+    for (let i = 0; i < str.length; i++) {
+        const ch = str[i]
+        if (ch === '[') {
+            stack.push(i)
+        } else if (ch === ']') {
+            stack.pop()
+        } else if (ch === 'y') {
+            if (!stack.length && str[i + 1] === 'l') return i
+        }
+    }
+    return -1
+}
 function handleRamifications(molecule, branch, str) {
     const rams = parseRamifications(str, 1)
     rams.forEach(({ positions, subparts, cycloRadical, prefix }) => {
@@ -539,7 +558,7 @@ function buildRegExps() {
     const str = or(
         joinCaptured(before, cycloRadical, after, end),
         joinCaptured(before, ['amine', 'phosphine', 'arsine'].join('|')),
-        joinCaptured(alkHolder, 'yl', alkHolder, 'yl', 'ether'),
+        joinCaptured(alkHolder, 'yl', 'ether'),
         joinCaptured(alkHolder, 'yl ', alkHolder, 'oate'),
         joinCaptured('di', alkHolder, 'yl', 'ether'),
         joinCaptured(ramifications, 'benzene')
