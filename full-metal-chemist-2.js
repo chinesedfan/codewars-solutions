@@ -56,7 +56,6 @@ function handle(molecule, str, fakeEnd) {
         before2, suffix,
         alk1,
         alk3, alk4,
-        alk5,
         ramifications
     ] = reg.exec(str)
     if (cycloRadical) {
@@ -76,17 +75,20 @@ function handle(molecule, str, fakeEnd) {
             handleRamifications(molecule, branch, before2)
         }
         return branch
-    } else if (alk1 || alk5) {
+    } else if (alk1) {
         // ether, R1-O-R2
-        let sameAlk = alk5
+        let sameAlk
         let alkPart1, alkPart2
-        if (alk1) {
+        if (/^di/.test(alk1)) {
+            sameAlk = alk1.slice(2) // omit 'di'
+            if (sameAlk[0] === '[') {
+                const tagEndIndex = sameAlk.indexOf(']')
+                sameAlk = sameAlk.slice(1, tagEndIndex) + sameAlk.slice(tagEndIndex + 1)
+            }
+        } else {
             const index = findFirstYl(alk1)
             alkPart1 = alk1.slice(0, index)
             alkPart2 = alk1.slice(index + 2) // 'yl'
-        } else if (alk5 && alk5[0] === '[') {
-            const tagEndIndex = alk5.indexOf(']')
-            sameAlk = alk5.slice(1, tagEndIndex) + alk5.slice(tagEndIndex + 1)
         }
         const b1 = handle(molecule, alkPart1 || sameAlk, true) // add a fake end
         const b2 = handle(molecule, alkPart2 || sameAlk, true)
@@ -560,7 +562,6 @@ function buildRegExps() {
         joinCaptured(before, ['amine', 'phosphine', 'arsine'].join('|')),
         joinCaptured(alkHolder, 'yl', 'ether'),
         joinCaptured(alkHolder, 'yl ', alkHolder, 'oate'),
-        joinCaptured('di', alkHolder, 'yl', 'ether'),
         joinCaptured(ramifications, 'benzene')
     )
 
