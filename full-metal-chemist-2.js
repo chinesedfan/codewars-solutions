@@ -28,6 +28,8 @@ const SUFFIX2ELT = {
 
 const { reg, rAlk } = buildRegExps()
 function parse(name) {
+    // const Molecule = require('./full-metal-chemist-1')
+    global.invalidCount = 0
     // Parse the name given as argument in the constructor and output the dict representing the raw formula
     const molecule = new Molecule(name)
     try {
@@ -40,7 +42,10 @@ function parse(name) {
     return molecule.atoms.reduce((obj, atom) => {
         obj[atom.element] = (obj[atom.element] || 0) + 1
         return obj
-    }, {})
+    }, {
+        // require class Molecule to count
+        H: -global.invalidCount
+    })
 }
 function handle(molecule, str, fakeEnd) {
     if (fakeEnd) {

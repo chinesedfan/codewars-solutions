@@ -29,6 +29,8 @@ class Atom {
   bond(other) {
     if (this === other || this.bonded.length >= atomInfo[this.element][0]
         || other.bonded.length >= atomInfo[other.element][0]) {
+      // for part 2
+      // global.invalidCount++
       throw new InvalidBond
     }
     this.bonded.push(other)
