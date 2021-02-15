@@ -82,7 +82,7 @@ function handle(molecule, str, fakeEnd) {
         if (/^di/.test(alk1)) {
             sameAlk = alk1.slice(2) // omit 'di'
             if (sameAlk[0] === '[') {
-                const tagEndIndex = sameAlk.indexOf(']')
+                const tagEndIndex = sameAlk.lastIndexOf(']')
                 sameAlk = sameAlk.slice(1, tagEndIndex) + sameAlk.slice(tagEndIndex + 1)
             }
         } else {
