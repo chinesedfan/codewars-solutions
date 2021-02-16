@@ -1,17 +1,21 @@
-function triangle(row) {
-  let cur = row.split('');
-  while (row.length >= 4) {
-    let step = 4;
-    while (step * 3 - 2 <= row.length) step = step * 3 - 2;
+function triangle(str) {
+  return helper(str, str.length, 0);
+}
 
-    cur = [];
-    for (let i = 0; i + step - 1 < row.length; i++) {
-      cur[i] = getNext(row[i] + row[i + step - 1]);
-    }
+// R  - 2,0
+// GB - 1,0 1,1
+function helper(str, row, col) {
+  if (row < 4) return triangleSimple(str.slice(col, col + row));
 
-    row = cur;
-  }
+  let step = 4;
+  while (step * 3 - 2 <= row) step = step * 3 - 2;
 
+  const left = helper(str, row - step + 1, col);
+  const right = helper(str, row - step + 1, col + step - 1);
+  return getNext(left + right);
+}
+function triangleSimple(str) {
+  let cur = str.split('');
   let next;
   while (cur.length > 1) {
     next = cur.map((c, i) => {
