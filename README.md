@@ -67,6 +67,10 @@ FSM (Finite State Machine) to regular expression is really an interesting proble
 
 Notice non-captured groups save so much performance.
 
+#### [The boolean order](https://www.codewars.com/kata/59eb1e4a0863c7ff7e000008)
+
+DP. O(N^3).
+
 #### [The builder of things](https://www.codewars.com/kata/the-builder-of-things)
 
 Learn `Proxy` usage.
