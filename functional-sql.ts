@@ -1,13 +1,24 @@
 class SQL {
+    filters: Function[]
+    groupedFilters: Function[]
+    executed: boolean
+    identical: Function
+
+    input?: any[]
+    result?: any
+    selectFn?: Function
+    orderByFn?: Function
+    groupByFnList?: Function[]
+
     constructor() {
         this.filters = [];
         this.groupedFilters = [];
 
         this.executed = false;
-        this.identical = (x) => x;
+        this.identical = (x: any) => x;
     }
 
-    select(fn) {
+    select(fn?: Function) {
         if (this.selectFn) throw new Error('Duplicate SELECT');
 
         this.selectFn = fn || this.identical;
@@ -18,11 +29,11 @@ class SQL {
 
         const inputs = Array.prototype.slice.call(arguments, 0);
         this.input = inputs.length <= 1 ? inputs[0].map(this.identical) : inputs.reverse().reduce((result, input, i) => {
-            if (!i) return input.map((item) => [item]);
+            if (!i) return input.map((item: any) => [item]);
 
-            let newResult = [];
-            input.forEach((item) => {
-                newResult = newResult.concat(result.map((arr) => [item].concat(arr)));
+            let newResult: any[] = [];
+            input.forEach((item: any) => {
+                newResult = newResult.concat(result.map((arr: any) => [item].concat(arr)));
             });
             return newResult;
         }, []);
@@ -33,7 +44,7 @@ class SQL {
         this.filters.push(this.createOrFunction(filters));
         return this;
     }
-    orderBy(fn) {
+    orderBy(fn: Function) {
         if (this.orderByFn) throw new Error('Duplicate ORDERBY');
 
         this.orderByFn = fn;
@@ -78,23 +89,23 @@ class SQL {
         return this.result;
     }
 
-    createOrFunction(fns) {
+    createOrFunction(fns: Function[]) {
         if (fns.length == 1) return fns[0];
 
-        return (item) => fns.some((f) => f(item));
+        return (item: any) => fns.some((f) => f(item));
     }
-    doFilter(result, filters) {
+    doFilter(result: any, filters: Function[]) {
         filters.forEach((fn) => {
             result = result.filter(fn);
         });
         return result;
     }
-    doGroupBy(result, i) {
-        const last = i == this.groupByFnList.length - 1;
+    doGroupBy(result: any, i: number) {
+        const last = i == this.groupByFnList!.length - 1;
 
-        const map = {};
-        result.forEach((item) => {
-            const key = this.groupByFnList[i](item);
+        const map: any = {};
+        result.forEach((item: any) => {
+            const key = this.groupByFnList![i](item);
             map[key] = map[key] || [key, []];
             map[key][1].push(item);
         });
@@ -120,6 +131,6 @@ class SQL {
     }
 }
 
-var query = function() {
+export function query() {
     return new SQL();
 };
