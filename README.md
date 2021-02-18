@@ -19,6 +19,10 @@ Backtracing with optimization. This solution can also pass the 7x7 kata.
     1. Pick the next candidate and check
     1. If valid then move on (solved when it is the last row or unable to be solved if it is the first one)
 
+#### [Become immortal](https://www.codewars.com/kata/59568be9cc15b57637000054)
+
+TOO VIOLENT!!! Note if one of `m` or `n` is the power of 2 (at least 4), it can be calculated by multiplication. Then divide and conquer.
+
 #### [Check and Mate](https://www.codewars.com/kata/check-and-mate)
 
 Simple.

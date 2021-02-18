@@ -52,6 +52,8 @@ function findPower(n) {
 function special(m, n, l, t) {
   // 0 ~ m-1, x n
   // 0 ~ m - 1 - l, x n
+  if (m - 1 <= l) return 0
+
   // (m - 1 - l) * (m - l) * n / 2
   if ((m - l) & 1) {
     return mul(t, (m - 1 - l) / 2, m - l, n)
@@ -60,8 +62,33 @@ function special(m, n, l, t) {
   }
 }
 function mul(t, ...args) {
-  return args.reduce((s, x) => (s * x) % t, 1)
+  return args.reduce((s, x) => safeMul(s, x, t), 1)
 }
 function add(t, ...args) {
   return args.reduce((s, x) => (s + x) % t, 0)
+}
+
+// https://github.com/chinesedfan/adventofcode/blob/master/lib/2019/day22.js
+function ones(n) {
+    const ret = [];
+    while (n) {
+        ret.unshift(n & 1);
+        n -= (n & 1);
+        n /= 2;
+    }
+    return ret;
+}
+function safeMul(a, b, n) {
+    // a * b mod n
+    const os = ones(b < 0 ? b + n : b);
+
+    let r = 0;
+    for (let i = 0; i < os.length; i++) {
+        if (os[i] & 1) {
+            r = (r + r + a) % n;
+        } else {
+            r = (r + r) % n;
+        }
+    }
+    return r;
 }
