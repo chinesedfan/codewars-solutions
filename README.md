@@ -27,6 +27,10 @@ TOO VIOLENT!!! Note if one of `m` or `n` is the power of 2 (at least 4), it can 
 
 Simple.
 
+#### [C Puzzle: Pointer Monster](https://www.codewars.com/kata/59cf6087aeb284909d00009c)
+
+See comments.
+
 #### [Decode the Morse code, for real](https://www.codewars.com/kata/decode-the-morse-code-for-real)
 
 Core algorithm is K-means. But how to choose the right initial centers? By coincidence, standard lengthes (1/3/7) solves this kata.
