@@ -1,9 +1,10 @@
 class List {
   static iterate(fn, x) {
     return new List(function* () {
+      let val = x
       while (1) {
-        yield x
-        x = fn(x)
+        yield val
+        val = fn(val)
       }
     })
   }
@@ -126,10 +127,13 @@ class List {
       return new List(this.list.slice(0, n))
     }
 
-    const g = this.createGenerator()
+    const self = this
     return new List(function* () {
+      const g = self.createGenerator()
+
+      let i = n
       let obj = g.next()
-      while (n--) {
+      while (i--) {
         if (obj.done) {
           break
         } else {
@@ -146,10 +150,10 @@ class List {
   }
   cons(x) {
     if (this.gf) {
-      const g = this.createGenerator()
+      const self = this
       return new List(function *() {
         yield x
-        yield* g
+        yield* self.createGenerator()
       }, this.infinite)
     }
     return new List([x].concat(this.list))
@@ -160,9 +164,9 @@ class List {
     if (this.list && xs.list) {
       return new List(this.list.concat(xs.toList()))
     } else {
-      const g = this.createGenerator()
+      const self = this
       return new List(function *() {
-        yield* g
+        yield* self.createGenerator()
         yield* xs.createGenerator()
       }, xs.infinite)
     }
@@ -193,8 +197,9 @@ class List {
 
   map(fn) {
     if (this.gf) {
-      const g = this.createGenerator()
+      const self = this
       return new List(function* () {
+        const g = self.createGenerator()
         while (1) {
           const obj = g.next()
           if (obj.done) break
@@ -206,8 +211,9 @@ class List {
   }
   filter(fn) {
     if (this.gf) {
-      const g = this.createGenerator()
+      const self = this
       return new List(function* () {
+        const g = self.createGenerator()
         while (1) {
           const obj = g.next()
           if (obj.done) break
@@ -225,8 +231,9 @@ class List {
     return new List(reversed)
   }
   concat() {
-    const g = this.createGenerator()
+    const self = this
     return new List(function* () {
+      const g = self.createGenerator()
       while (1) {
         const obj = g.next()
         if (obj.done) break
@@ -235,8 +242,9 @@ class List {
     }, this.infinite || this.any(item => item.infinite))
   }
   concatMap(fn) {
-    const g = this.createGenerator()
+    const self = this
     return new List(function* () {
+      const g = self.createGenerator()
       while (1) {
         const obj = g.next()
         if (obj.done) break
@@ -245,9 +253,10 @@ class List {
     }, this.infinite || this.any(item => item.infinite))
   }
   zipWith(fn, xs) {
-    const g = this.createGenerator()
-    const g2 = xs.createGenerator()
+    const self = this
     return new List(function* () {
+      const g = self.createGenerator()
+      const g2 = xs.createGenerator()
       while (1) {
         const obj = g.next()
         const obj2 = g2.next()
