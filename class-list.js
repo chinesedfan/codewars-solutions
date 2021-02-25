@@ -181,16 +181,17 @@ class List {
         if (j < 0) j += length
       }
 
-      const g = this.createGenerator()
-      const list = []
-      let index = 0
-      while (index < j) {
-        const obj = g.next()
-        if (obj.done) break
-        if (index >= i) list[list.length] = obj.value
-        index++
-      }
-      return new List(list)
+      const self = this
+      return new List(function* () {
+        const g = self.createGenerator()
+        let index = 0
+        while (index < j) {
+          const obj = g.next()
+          if (obj.done) break
+          if (index >= i) yield obj.value
+          index++
+        }
+      }, this.infinite && j === Infinity)
     }
     return new List(this.list.slice(i, j))
   }
@@ -260,10 +261,10 @@ class List {
       while (1) {
         const obj = g.next()
         const obj2 = g2.next()
-        if (obj.done && obj2.done) break
+        if (obj.done || obj2.done) break
         yield fn(obj.value, obj2.value)
       }
-    }, this.infinite || xs.infinite)
+    }, this.infinite && xs.infinite)
   }
   foldr(fn, x) {
     if (this.gf) {
@@ -301,26 +302,24 @@ class List {
     return new List(r)
   }
   scanl(fn, x) {
-    const r = [x]
-    const g = this.createGenerator()
+    const self = this
+    return new List(function* () {
+      const g = self.createGenerator()
 
-    let prev = x
-    while (1) {
-      const obj = g.next()
-      if (obj.done) break
-      prev = fn(prev, obj.value)
-      r.push(prev)
-    }
-    return new List(r)
+      let prev = x
+      while (1) {
+        yield prev
+
+        const obj = g.next()
+        if (obj.done) break
+        prev = fn(prev, obj.value)
+      }
+    }, this.infinite)
   }
   elem(x) {
-    if (this.infinite) throw new Error('no `elem` for infinite list')
-
     return this.any(item => item === x)
   }
   elemIndex(x) {
-    if (this.infinite) throw new Error('no `elemIndex` for infinite list')
-
     const g = this.createGenerator()
     let i = 0
     while (1) {
@@ -332,8 +331,6 @@ class List {
     return -1
   }
   find(fn) {
-    if (this.infinite) throw new Error('no `find` for infinite list')
-
     const g = this.createGenerator()
     while (1) {
       const obj = g.next()
@@ -343,8 +340,6 @@ class List {
     return undefined
   }
   findIndex(fn) {
-    if (this.infinite) throw new Error('no `findIndex` for infinite list')
-
     const g = this.createGenerator()
     let i = 0
     while (1) {
@@ -356,8 +351,6 @@ class List {
     return -1
   }
   any(fn) {
-    if (this.infinite) throw new Error('no `any` for infinite list')
-
     const g = this.createGenerator()
     while (1) {
       const obj = g.next()
