@@ -121,9 +121,9 @@ class List {
 
   take(n) {
     if (n < 0) return List.empty
-    // keep position
+    // don't keep position
     if (this.list) {
-      return new List(this.list.splice(0, n))
+      return new List(this.list.slice(0, n))
     }
 
     const g = this.createGenerator()
@@ -131,7 +131,7 @@ class List {
       let obj = g.next()
       while (n--) {
         if (obj.done) {
-          yield undefined
+          break
         } else {
           yield obj.value
           obj = g.next()
@@ -160,7 +160,7 @@ class List {
     } else {
       const g = this.createGenerator()
       return new List(function *() {
-        yield* this.createGenerator()
+        yield* g
         yield* xs.createGenerator()
       }, xs.infinite)
     }
@@ -224,25 +224,23 @@ class List {
   }
   concat() {
     const g = this.createGenerator()
-    let ret = List.empty
-    while (1) {
-      const obj = g.next()
-      if (obj.done) break
-      ret = ret.append(obj.value)
-      if (obj.value.infinite) ret.infinite = true
-    }
-    return ret
+    return new List(function* () {
+      while (1) {
+        const obj = g.next()
+        if (obj.done) break
+        yield* obj.value
+      }
+    })
   }
   concatMap(fn) {
     const g = this.createGenerator()
-    let ret = List.empty
-    while (1) {
-      const obj = g.next()
-      if (obj.done) break
-      ret = ret.append(fn(obj.value))
-      if (obj.value.infinite) ret.infinite = true
-    }
-    return ret
+    return new List(function* () {
+      while (1) {
+        const obj = g.next()
+        if (obj.done) break
+        yield* obj.value.map(fn)
+      }
+    })
   }
   zipWith(fn, xs) {
     const g = this.createGenerator()
