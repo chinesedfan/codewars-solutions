@@ -65,7 +65,7 @@ class List {
     return this.slice(1)
   }
   init() {
-    if (xs.infinite) return new List(xs)
+    if (this.infinite) return new List(this)
 
     return this.slice(0, -1)
   }
@@ -140,6 +140,8 @@ class List {
     }, false)
   }
   drop(n) {
+    if (n < 0) return new List(this)
+
     return this.slice(n)
   }
   cons(x) {
@@ -228,9 +230,9 @@ class List {
       while (1) {
         const obj = g.next()
         if (obj.done) break
-        yield* obj.value
+        yield* obj.value.createGenerator()
       }
-    })
+    }, this.infinite || this.any(item => item.infinite))
   }
   concatMap(fn) {
     const g = this.createGenerator()
@@ -238,9 +240,9 @@ class List {
       while (1) {
         const obj = g.next()
         if (obj.done) break
-        yield* obj.value.map(fn)
+        yield* fn(obj.value).createGenerator()
       }
-    })
+    }, this.infinite || this.any(item => item.infinite))
   }
   zipWith(fn, xs) {
     const g = this.createGenerator()
