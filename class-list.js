@@ -117,7 +117,7 @@ class List {
     return this.list[i]
   }
   nil() {
-    return !this.length()
+    return !(this.infinite || this.length())
   }
 
   take(n) {
@@ -180,6 +180,8 @@ class List {
         if (i < 0) i += length
         if (j < 0) j += length
       }
+
+      if (j <= i) return List.empty
 
       const self = this
       return new List(function* () {
@@ -267,14 +269,16 @@ class List {
     }, this.infinite && xs.infinite)
   }
   foldr(fn, x) {
-    if (this.gf) {
+    if (this.infinite) {
       // TODO: how can we know `fn` is nullary or unary?
-      throw new Error('not implemented')
+      return fn(this.head())
     }
 
+    const list = this.toList()
+
     let r = x
-    for (let i = this.list.length - 1; i >= 0; i--) {
-      r = fn(this.list[i], r)
+    for (let i = list.length - 1; i >= 0; i--) {
+      r = fn(list[i], r)
     }
     return r
   }
@@ -294,6 +298,9 @@ class List {
     return this.list.reduce((s, item) => fn(s, item), x)
   }
   scanr(fn, x) {
+    if (fn.length < 2) {
+      return this.map(fn)
+    }
     let r = []
     r[this.list.length] = x
     for (let i = this.list.length - 1; i >= 0; i--) {
@@ -360,8 +367,6 @@ class List {
     return false
   }
   all(fn) {
-    if (this.infinite) throw new Error('no `all` for infinite list')
-
     const g = this.createGenerator()
     while (1) {
       const obj = g.next()
@@ -371,11 +376,17 @@ class List {
     return true
   }
   the() {
-    if (this.infinite) throw new Error('no `the` for infinite list')
-
     const x = this.head()
     return this.all(item => item === x) ? x : undefined
   }
+}
+
+function isPrime(n) {
+  const limit = Math.floor(Math.sqrt(n))
+  for (let i = 2; i <= limit; i++) {
+    if (!(n % i)) return false
+  }
+  return true
 }
 
 Object.defineProperties(List, {
@@ -383,10 +394,61 @@ Object.defineProperties(List, {
     get() {
       return new List([])
     }
-  }
-  // static PRIME
-  // static FIB
-  // static PI
+  },
+  PRIME: {
+    get() {
+      return new List(function* () {
+        yield 2
+
+        let i = 3
+        while (1) {
+          if (isPrime(i)) yield i
+          i += 2
+        }
+      })
+    }
+  },
+  FIB: {
+    get() {
+      return new List(function* () {
+        let i = 0
+        let j = 1
+        yield i
+        yield j
+        while (1) {
+          const sum = i + j
+          yield sum
+          i = j
+          j = sum
+        }
+      })
+    }
+  },
+  PI: {
+    get() {
+      return new List(function* () {
+        yield 0
+
+        let p2 = 1 / 2
+        let p3 = 1 / 3
+        let pow = 1
+        let sign = 1
+
+        let a2 = 0
+        let a3 = 0
+        while (1) {
+          a2 += sign * p2 / pow
+          a3 += sign * p3 / pow
+          yield 4 * (a2 + a3)
+
+          p2 /= 4
+          p3 /= 9
+          pow += 2
+          sign = -sign
+        }
+      })
+    }
+  },
 })
 
 // const Test = {
